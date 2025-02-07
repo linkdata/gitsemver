@@ -25,9 +25,6 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
 
-      - name: Build
-        run: go build -v ./...
-
       - name: Test
         run: go test -tags debug -bench=. -coverprofile=coverage.txt ./...
 
@@ -35,6 +32,9 @@ jobs:
         uses: securego/gosec@master
         with:
           args: ./...
+
+      - name: Build
+        run: go build -v ./...
 
       - name: actions-goveralls
         uses: shogo82148/actions-goveralls@v1
