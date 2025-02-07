@@ -146,7 +146,7 @@ func Test_DefaultGitter_GetTreeHash(t *testing.T) {
 	if x := dg.GetTreeHash("/", "v1.0.0"); x != "" {
 		t.Error(x)
 	}
-	if x := dg.GetTreeHash(".", "v0.0.1"); x != "43a03af5130432f9bffee7447e771bf9c91adb08" {
+	if x := dg.GetTreeHash(".", "v0.0.2"); x != "57562d5fc36ef21a9785fb6afd128e87ab302fae" {
 		t.Error(x)
 	}
 }
@@ -159,8 +159,8 @@ func Test_DefaultGitter_GetClosestTag(t *testing.T) {
 	if x := dg.GetClosestTag("/", ""); x != "" {
 		t.Error(x)
 	}
-	tag := dg.GetClosestTag(".", "b1803c4de50c416bf07b873e18ba71cc53fdfb66")
-	if tag != "v0.0.1" {
+	tag := dg.GetClosestTag(".", "f9a1633a72ca04515d517a830a2e2835a98767f6")
+	if tag != "v0.0.2" {
 		t.Error(tag)
 	}
 }
@@ -173,7 +173,7 @@ func Test_DefaultGitter_GetBranchFromTag(t *testing.T) {
 	if x := dg.GetBranchesFromTag("/", "refs/tags/v1.0.0"); x != nil {
 		t.Error(x)
 	}
-	if x := dg.GetBranchesFromTag(".", "refs/tags/v0.0.1"); slices.Compare(x, []string{"main"}) != 0 {
+	if x := dg.GetBranchesFromTag(".", "refs/tags/v0.0.2"); slices.Compare(x, []string{"main"}) != 0 {
 		t.Error(x)
 	}
 }
