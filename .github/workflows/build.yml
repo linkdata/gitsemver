@@ -15,18 +15,20 @@ jobs:
         go:
           - "1.23"
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Get tags
-        run: git fetch --prune --unshallow
+      - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
 
+      - name: Go generate
+        run: go generate ./...
+
       - name: Test
-        run: go test -tags debug -bench=. -coverprofile=coverage.txt ./...
+        run: go test -tags debug -bench=. -coverprofile=coverage.out ./...
 
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
@@ -34,12 +36,12 @@ jobs:
           args: ./...
 
       - name: Build
-        run: go build -v ./...
+        run: go build ./...
 
       - name: actions-goveralls
         uses: shogo82148/actions-goveralls@v1
         with:
-          path-to-profile: coverage.txt
+          path-to-profile: coverage.out
 
       - name: Go report card
         uses: creekorful/goreportcard-action@v1.0
