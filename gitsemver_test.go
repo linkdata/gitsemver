@@ -7,7 +7,7 @@ import (
 )
 
 func Test_NewVersionStringer_SucceedsNormally(t *testing.T) {
-	vs, err := gitsemver.NewVersionStringer("git")
+	vs, err := gitsemver.New("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -17,7 +17,7 @@ func Test_NewVersionStringer_SucceedsNormally(t *testing.T) {
 }
 
 func Test_NewVersionStringer_FailsWithBadBinary(t *testing.T) {
-	vs, err := gitsemver.NewVersionStringer("./versionstringer.go")
+	vs, err := gitsemver.New("./versionstringer.go")
 	if err == nil {
 		t.Error("no error")
 	}
@@ -39,7 +39,7 @@ func isTrue(t *testing.T, v bool) {
 }
 
 func Test_VersionStringer_IsEnvTrue(t *testing.T) {
-	vs := gitsemver.VersionStringer{
+	vs := gitsemver.GitSemVer{
 		Env: MockEnvironment{
 			"TEST_EMPTY":      "",
 			"TEST_FALSE":      "false",
@@ -58,7 +58,7 @@ func Test_VersionStringer_IsEnvTrue(t *testing.T) {
 func Test_VersionStringer_IsReleaseBranch(t *testing.T) {
 	const branchName = "testbranch"
 	env := MockEnvironment{}
-	vs := gitsemver.VersionStringer{Env: env}
+	vs := gitsemver.GitSemVer{Env: env}
 
 	isTrue(t, vs.IsReleaseBranch("default"))
 	isTrue(t, vs.IsReleaseBranch("main"))
@@ -83,7 +83,7 @@ func Test_VersionStringer_IsReleaseBranch(t *testing.T) {
 func Test_VersionStringer_GetTag(t *testing.T) {
 	env := MockEnvironment{}
 	git := &MockGitter{}
-	vs := gitsemver.VersionStringer{Git: git, Env: env}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
 	var tag string
 	var sametree bool
@@ -111,7 +111,7 @@ func Test_VersionStringer_GetTag(t *testing.T) {
 func Test_VersionStringer_GetBranch(t *testing.T) {
 	env := MockEnvironment{}
 	git := &MockGitter{}
-	vs := gitsemver.VersionStringer{Git: git, Env: env}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
 	git.branch = "zomg"
 	text, name := vs.GetBranch(".")
@@ -139,7 +139,7 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 func Test_VersionStringer_GetBranchFromTag_GitLab(t *testing.T) {
 	env := MockEnvironment{}
 	git := &MockGitter{}
-	vs := gitsemver.VersionStringer{Git: git, Env: env}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
 	env["CI_COMMIT_TAG"] = "v1.0.0"
 	env["CI_COMMIT_REF_NAME"] = "v1.0.0"
@@ -151,7 +151,7 @@ func Test_VersionStringer_GetBranchFromTag_GitLab(t *testing.T) {
 func Test_VersionStringer_GetBranchFromTag_GitHub(t *testing.T) {
 	env := MockEnvironment{}
 	git := &MockGitter{}
-	vs := gitsemver.VersionStringer{Git: git, Env: env}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
 	env["GITHUB_REF_TYPE"] = "tag"
 	env["GITHUB_REF_NAME"] = "v1.0.0"
@@ -168,7 +168,7 @@ func Test_VersionStringer_GetBranchFromTag_GitHub(t *testing.T) {
 func Test_VersionStringer_GetBuild(t *testing.T) {
 	env := MockEnvironment{}
 	git := &MockGitter{}
-	vs := gitsemver.VersionStringer{Git: git, Env: env}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
 	build := vs.GetBuild(".")
 	isEqual(t, "build", build)
@@ -187,7 +187,7 @@ func Test_VersionStringer_GetBuild(t *testing.T) {
 func Test_VersionStringer_GetVersion(t *testing.T) {
 	env := MockEnvironment{}
 	git := &MockGitter{}
-	vs := gitsemver.VersionStringer{Git: git, Env: env}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
 	vi, err := vs.GetVersion("/") // invalid repo
 	if err == nil {
@@ -243,7 +243,7 @@ func Test_VersionStringer_GetVersion(t *testing.T) {
 func Test_VersionStringer_GetVersionDetachedHEAD(t *testing.T) {
 	env := MockEnvironment{}
 	git := &MockGitter{branch: "detached", treehash: "tree-2"}
-	vs := gitsemver.VersionStringer{Git: git, Env: env}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
 	vi, err := vs.GetVersion(".")
 	if err != nil {
