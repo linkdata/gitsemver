@@ -11,5 +11,7 @@ Using tree hashes it returns the latest matching semver tag. If no tree hash
 match exactly, it falls back to the latest semver tag reachable from the
 current HEAD.
 
-If the match is not exact or the current branch is not the default branch,
-it creates a work-in-progress semver string like "v0.1.2-myfeature.123".
+If the match is not exact or the current branch is not the default branch
+or a protected branch, it creates a work-in-progress semver string like `v0.1.2-myfeature.123`.
+
+Supports raw git repositories as well as GitLab and GitHub builders.
