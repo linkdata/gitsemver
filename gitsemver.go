@@ -50,8 +50,7 @@ func (vs *GitSemVer) IsReleaseBranch(branchName string) bool {
 
 	// GitLab gives us the default branch name directly.
 	if defBranch, ok := vs.Env.LookupEnv("CI_DEFAULT_BRANCH"); ok {
-		defBranch = strings.TrimSpace(defBranch)
-		return branchName == defBranch
+		return branchName == strings.TrimSpace(defBranch)
 	}
 
 	// Fallback to common default branch names.
