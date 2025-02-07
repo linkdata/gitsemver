@@ -2,6 +2,7 @@ package gitsemver
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -29,9 +30,10 @@ func New(gitBin string) (vs *GitSemVer, err error) {
 }
 
 // IsEnvTrue returns true if the given environment variable
-// exists and is set to the string "true" (not case sensitive).
-func (vs *GitSemVer) IsEnvTrue(envvar string) bool {
-	return strings.ToLower(strings.TrimSpace(vs.Env.Getenv(envvar))) == "true"
+// exists and is set to something that parses as true.
+func (vs *GitSemVer) IsEnvTrue(envvar string) (yes bool) {
+	yes, _ = strconv.ParseBool(vs.Env.Getenv(envvar))
+	return
 }
 
 // IsReleaseBranch returns true if the given branch name should

@@ -45,6 +45,7 @@ func Test_VersionStringer_IsEnvTrue(t *testing.T) {
 			"TEST_FALSE":      "false",
 			"TEST_TRUE_LOWER": "true",
 			"TEST_TRUE_UPPER": "TRUE",
+			"TEST_TRUE_1":     "1",
 		},
 	}
 	isEqual(t, vs.IsEnvTrue("TEST_MISSING"), false)
@@ -53,6 +54,7 @@ func Test_VersionStringer_IsEnvTrue(t *testing.T) {
 	isEqual(t, vs.IsEnvTrue("TEST_FALSE"), false)
 	isEqual(t, vs.IsEnvTrue("TEST_TRUE_LOWER"), true)
 	isEqual(t, vs.IsEnvTrue("TEST_TRUE_UPPER"), true)
+	isEqual(t, vs.IsEnvTrue("TEST_TRUE_1"), true)
 }
 
 func Test_VersionStringer_IsReleaseBranch(t *testing.T) {
