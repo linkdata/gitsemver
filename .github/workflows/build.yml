@@ -17,6 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Get tags
+        run: git fetch --prune --unshallow
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
