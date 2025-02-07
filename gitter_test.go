@@ -1,13 +1,15 @@
-package makeversion
+package gitsemver_test
 
 import (
 	"os"
 	"slices"
 	"testing"
+
+	"github.com/linkdata/gitsemver"
 )
 
 func Test_NewDefaultGitter_SucceedsNormally(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -17,7 +19,7 @@ func Test_NewDefaultGitter_SucceedsNormally(t *testing.T) {
 }
 
 func Test_CheckGitRepo_SucceedsForCurrent(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -31,7 +33,7 @@ func Test_CheckGitRepo_SucceedsForCurrent(t *testing.T) {
 }
 
 func Test_CheckGitRepo_SucceedsForSubdir(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -45,7 +47,7 @@ func Test_CheckGitRepo_SucceedsForSubdir(t *testing.T) {
 }
 
 func Test_CheckGitRepo_FailsForRootAndFile(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -71,7 +73,7 @@ func Test_CheckGitRepo_IgnoresFileNamedGit(t *testing.T) {
 		if f, err := os.Create(fileNamedGit); err == nil {
 			defer f.Close()
 			defer os.Remove(fileNamedGit)
-			dg, err := NewDefaultGitter("git")
+			dg, err := gitsemver.NewDefaultGitter("git")
 			if err != nil {
 				t.Error(err)
 			}
@@ -79,7 +81,7 @@ func Test_CheckGitRepo_IgnoresFileNamedGit(t *testing.T) {
 			if err != nil {
 				t.Error(err)
 			}
-			if lastName(repo) != "gitsemver" {
+			if gitsemver.LastName(repo) != "gitsemver" {
 				t.Error(repo)
 			}
 		}
@@ -89,7 +91,7 @@ func Test_CheckGitRepo_IgnoresFileNamedGit(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetBranch(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -101,17 +103,17 @@ func Test_DefaultGitter_GetBranch(t *testing.T) {
 	}
 }
 
-func Test_lastName(t *testing.T) {
-	if x := lastName("foo"); x != "foo" {
+func Test_LastName(t *testing.T) {
+	if x := gitsemver.LastName("foo"); x != "foo" {
 		t.Error(x)
 	}
-	if x := lastName("foo/bar"); x != "bar" {
+	if x := gitsemver.LastName("foo/bar"); x != "bar" {
 		t.Error(x)
 	}
 }
 
 func Test_DefaultGitter_GetTags(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -125,7 +127,7 @@ func Test_DefaultGitter_GetTags(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetCurrentTreeHash(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -139,7 +141,7 @@ func Test_DefaultGitter_GetCurrentTreeHash(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetTreeHash(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -152,7 +154,7 @@ func Test_DefaultGitter_GetTreeHash(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetClosestTag(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -166,7 +168,7 @@ func Test_DefaultGitter_GetClosestTag(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetBranchFromTag(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -179,7 +181,7 @@ func Test_DefaultGitter_GetBranchFromTag(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetBuild(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}
@@ -192,7 +194,7 @@ func Test_DefaultGitter_GetBuild(t *testing.T) {
 }
 
 func Test_DefaultGitter_FetchTags(t *testing.T) {
-	dg, err := NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
 	}

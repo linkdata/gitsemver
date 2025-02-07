@@ -1,4 +1,4 @@
-package makeversion
+package gitsemver
 
 import (
 	"errors"
@@ -119,7 +119,7 @@ func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string) {
 	return ""
 }
 
-func lastName(s string) string {
+func LastName(s string) string {
 	if idx := strings.LastIndexByte(s, '/'); idx > -1 {
 		s = s[idx+1:]
 	}
@@ -136,7 +136,7 @@ func (dg DefaultGitter) GetBranchesFromTag(repo, tag string) (branches []string)
 					starred := s[0] == '*'
 					s = strings.TrimSpace(strings.TrimPrefix(s, "*"))
 					if len(s) > 0 && !strings.Contains(s, " ") {
-						branches = append(branches, lastName(s))
+						branches = append(branches, LastName(s))
 						if starred {
 							branches = branches[len(branches)-1:]
 							break

@@ -1,13 +1,15 @@
-package makeversion
+package gitsemver_test
 
 import (
 	"os"
 	"testing"
+
+	"github.com/linkdata/gitsemver"
 )
 
 func Test_OsEnvironment_Getenv(t *testing.T) {
 	const VarName = "MKENV_TEST3141592654"
-	env := OsEnvironment{}
+	env := gitsemver.OsEnvironment{}
 	_, expectOk := os.LookupEnv(VarName)
 	_, actualOk := env.LookupEnv(VarName)
 	if expectOk != actualOk {

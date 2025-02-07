@@ -1,6 +1,4 @@
-// @author jli@cparta.se
-
-package makeversion
+package gitsemver
 
 import (
 	"regexp"

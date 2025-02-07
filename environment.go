@@ -1,4 +1,4 @@
-package makeversion
+package gitsemver
 
 import "os"
 

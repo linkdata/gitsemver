@@ -1,10 +1,10 @@
-// @author jli@cparta.se
-
-package makeversion
+package gitsemver_test
 
 import (
 	"os"
 	"strings"
+
+	"github.com/linkdata/gitsemver"
 )
 
 type MockEnvironment map[string]string
@@ -138,4 +138,4 @@ func (mg *MockGitter) FetchTags(repo string) error {
 	return nil
 }
 
-var _ Gitter = &MockGitter{}
+var _ gitsemver.Gitter = &MockGitter{}
