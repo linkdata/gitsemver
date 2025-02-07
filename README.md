@@ -1,4 +1,4 @@
-[![build](https://github.com/linkdata/gitsemver/actions/workflows/go.yml/badge.svg)](https://github.com/linkdata/gitsemver/actions/workflows/build.yml)
+[![build](https://github.com/linkdata/gitsemver/actions/workflows/build.yml/badge.svg)](https://github.com/linkdata/gitsemver/actions/workflows/build.yml)
 [![coverage](https://coveralls.io/repos/github/linkdata/gitsemver/badge.svg?branch=main)](https://coveralls.io/github/linkdata/gitsemver?branch=main)
 [![goreport](https://goreportcard.com/badge/github.com/linkdata/gitsemver)](https://goreportcard.com/report/github.com/linkdata/gitsemver)
 [![Docs](https://godoc.org/github.com/linkdata/gitsemver?status.svg)](https://godoc.org/github.com/linkdata/gitsemver)
