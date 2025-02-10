@@ -11,12 +11,11 @@ import (
 )
 
 type VersionInfo struct {
-	Tag        string // git tag, e.g. "v1.2.3"
-	Branch     string // git branch, e.g. "Special--Branch"
-	BranchText string // cleaned up git branch name, e.g. "special-branch"
-	Build      string // git or CI build number, e.g. "456"
-	SameTree   bool   // true if tree hash is identical
-	IsRelease  bool   // true if the branch is a release branch
+	Tag       string // git tag, e.g. "v1.2.3"
+	Branch    string // git branch, e.g. "Special--Branch"
+	Build     string // git or CI build number, e.g. "456"
+	SameTree  bool   // true if tree hash is identical
+	IsRelease bool   // true if the branch is a release branch
 }
 
 func findPackageName(repo, s string) (pkgName string, err error) {
@@ -78,12 +77,27 @@ func (vi *VersionInfo) IncPatch() {
 	}
 }
 
+func CleanBranch(branch string) string {
+	branch = reOnlyWords.ReplaceAllString(branch, "-")
+	for {
+		if newSuffix := strings.ReplaceAll(branch, "--", "-"); newSuffix != branch {
+			branch = newSuffix
+			continue
+		}
+		break
+	}
+	branch = strings.TrimPrefix(branch, "-")
+	branch = strings.TrimSuffix(branch, "-")
+	branch = strings.ToLower(branch)
+	return branch
+}
+
 // Version returns the composite version, e.g. "v1.2.3-mybranch.456"
 func (vi *VersionInfo) Version() (version string) {
 	if vi.Tag != "" {
 		version = vi.Tag
 		if !vi.IsRelease || !vi.SameTree {
-			suffix := vi.BranchText
+			suffix := CleanBranch(vi.Branch)
 			if vi.Build != "" {
 				if suffix != "" {
 					suffix += "."

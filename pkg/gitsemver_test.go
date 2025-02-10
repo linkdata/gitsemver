@@ -116,25 +116,17 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
 	git.branch = "zomg"
-	text, name := vs.GetBranch(".")
-	isEqual(t, "zomg", text)
+	name := vs.GetBranch(".")
 	isEqual(t, "zomg", name)
 
-	git.branch = "branch.with..dots"
-	text, name = vs.GetBranch(".")
-	isEqual(t, "branch-with-dots", text)
-	isEqual(t, "branch.with..dots", name)
-
 	env["CI_COMMIT_REF_NAME"] = "gitlab---branch"
-	text, name = vs.GetBranch(".")
-	isEqual(t, "gitlab-branch", text)
+	name = vs.GetBranch(".")
 	isEqual(t, "gitlab---branch", name)
 	delete(env, "CI_COMMIT_REF_NAME")
 
 	env["GITHUB_REF_NAME"] = "github.branch"
-	text, name = vs.GetBranch(".")
+	name = vs.GetBranch(".")
 	isEqual(t, "github.branch", name)
-	isEqual(t, "github-branch", text)
 	delete(env, "GITHUB_REF_NAME")
 }
 
@@ -145,9 +137,8 @@ func Test_VersionStringer_GetBranchFromTag_GitLab(t *testing.T) {
 
 	env["CI_COMMIT_TAG"] = "v1.0.0"
 	env["CI_COMMIT_REF_NAME"] = "v1.0.0"
-	text, name := vs.GetBranch(".")
+	name := vs.GetBranch(".")
 	isEqual(t, "main", name)
-	isEqual(t, "main", text)
 }
 
 func Test_VersionStringer_GetBranchFromTag_GitHub(t *testing.T) {
@@ -157,14 +148,12 @@ func Test_VersionStringer_GetBranchFromTag_GitHub(t *testing.T) {
 
 	env["GITHUB_REF_TYPE"] = "tag"
 	env["GITHUB_REF_NAME"] = "v1.0.0"
-	text, name := vs.GetBranch(".")
+	name := vs.GetBranch(".")
 	isEqual(t, "main", name)
-	isEqual(t, "main", text)
 
 	env["GITHUB_REF_NAME"] = "v1"
-	text, name = vs.GetBranch(".")
+	name = vs.GetBranch(".")
 	isEqual(t, "onepointoh", name)
-	isEqual(t, "onepointoh", text)
 }
 
 func Test_VersionStringer_GetBuild(t *testing.T) {

@@ -76,7 +76,8 @@ func (vs *GitSemVer) GetTag(repo string) (string, bool) {
 	}
 	if currtreehash := vs.Git.GetCurrentTreeHash(repo); currtreehash != "" {
 		for _, testtag := range vs.Git.GetTags(repo) {
-			if vs.Git.GetTreeHash(repo, testtag) == currtreehash {
+			tagtreehash := vs.Git.GetTreeHash(repo, testtag)
+			if tagtreehash == currtreehash {
 				return testtag, true
 			}
 		}
@@ -118,25 +119,11 @@ func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string) {
 // branch name in the build system or Git. If no branch name
 // can be found (for example, in detached HEAD state),
 // then an empty string is returned.
-func (vs *GitSemVer) GetBranch(repo string) (branchText, branchName string) {
+func (vs *GitSemVer) GetBranch(repo string) (branchName string) {
 	if branchName = vs.getBranchGitHub(repo); branchName == "" {
 		if branchName = vs.getBranchGitLab(repo); branchName == "" {
 			branchName = vs.Git.GetBranch(repo)
 		}
-	}
-	branchText = branchName
-	if branchText != "" {
-		branchText = reOnlyWords.ReplaceAllString(branchText, "-")
-		for {
-			if newBranchText := strings.ReplaceAll(branchText, "--", "-"); newBranchText != branchText {
-				branchText = newBranchText
-				continue
-			}
-			break
-		}
-		branchText = strings.TrimPrefix(branchText, "-")
-		branchText = strings.TrimSuffix(branchText, "-")
-		branchText = strings.ToLower(branchText)
 	}
 	return
 }
@@ -158,10 +145,8 @@ func (vs *GitSemVer) GetVersion(repo string) (vi VersionInfo, err error) {
 	if repo, err = vs.Git.CheckGitRepo(repo); err == nil {
 		if vi.Tag, vi.SameTree = vs.GetTag(repo); vi.Tag != "" {
 			vi.Build = vs.GetBuild(repo)
-			branchText, branchName := vs.GetBranch(repo)
-			vi.Branch = branchName
-			vi.BranchText = branchText
-			vi.IsRelease = vs.IsReleaseBranch(branchName)
+			vi.Branch = vs.GetBranch(repo)
+			vi.IsRelease = vs.IsReleaseBranch(vi.Branch)
 		}
 	}
 	return

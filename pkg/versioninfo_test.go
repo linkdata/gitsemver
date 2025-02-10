@@ -38,3 +38,9 @@ func Test_VersionInfo_IncPatch(t *testing.T) {
 		t.Error(vi.Tag)
 	}
 }
+
+func Test_CleanBranch(t *testing.T) {
+	isEqual(t, "branch-with-dots", gitsemver.CleanBranch("-branch.with..dots"))
+	isEqual(t, "gitlab-branch", gitsemver.CleanBranch("gitlab---branch"))
+	isEqual(t, "github-branch", gitsemver.CleanBranch("github.branch."))
+}
