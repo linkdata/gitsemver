@@ -11,6 +11,7 @@ func TestMainFn(t *testing.T) {
 	flag.Parse()
 	*flagGoPackage = true
 	*flagOut = "test.out"
+	*flagIncPatch = true
 	mainfn()
 	b, err := os.ReadFile("test.out")
 	if err == nil {

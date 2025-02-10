@@ -5,15 +5,18 @@ import (
 	"go/token"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 )
 
 type VersionInfo struct {
-	Tag     string // git tag, e.g. "v1.2.3"
-	Branch  string // git branch, e.g. "mybranch"
-	Build   string // git or CI build number, e.g. "456"
-	Version string // composite version, e.g. "v1.2.3-mybranch.456"
+	Tag        string // git tag, e.g. "v1.2.3"
+	Branch     string // git branch, e.g. "Special--Branch"
+	BranchText string // cleaned up git branch name, e.g. "special-branch"
+	Build      string // git or CI build number, e.g. "456"
+	SameTree   bool   // true if tree hash is identical
+	IsRelease  bool   // true if the branch is a release branch
 }
 
 func findPackageName(repo, s string) (pkgName string, err error) {
@@ -59,7 +62,38 @@ func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) 
 			vi.Branch, vi.Build,
 			strings.ToLower(pkgName),
 			pkgName,
-			vi.Version)
+			vi.Version())
+	}
+	return
+}
+
+// IncPatch increments the patch level of the version.
+func (vi *VersionInfo) IncPatch() {
+	for strings.Count(vi.Tag, ".") < 2 {
+		vi.Tag += ".0"
+	}
+	patchindex := strings.LastIndexByte(vi.Tag, '.') + 1
+	if patchlevel, err := strconv.Atoi(vi.Tag[patchindex:]); err == nil {
+		vi.Tag = vi.Tag[:patchindex] + strconv.Itoa(patchlevel+1)
+	}
+}
+
+// Version returns the composite version, e.g. "v1.2.3-mybranch.456"
+func (vi *VersionInfo) Version() (version string) {
+	if vi.Tag != "" {
+		version = vi.Tag
+		if !vi.IsRelease || !vi.SameTree {
+			suffix := vi.BranchText
+			if vi.Build != "" {
+				if suffix != "" {
+					suffix += "."
+				}
+				suffix += vi.Build
+			}
+			if suffix != "" {
+				version += "-" + suffix
+			}
+		}
 	}
 	return
 }

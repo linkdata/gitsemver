@@ -195,20 +195,20 @@ func Test_VersionStringer_GetVersion(t *testing.T) {
 	if err == nil {
 		t.Error("no error")
 	}
-	isEqual(t, "", vi.Version)
+	isEqual(t, "", vi.Version())
 
 	vi, err = vs.GetVersion(".")
 	if err != nil {
 		t.Error(err)
 	}
-	isEqual(t, "v6.0.0-main.build", vi.Version)
+	isEqual(t, "v6.0.0-main.build", vi.Version())
 
 	git.treehash = "tree-6"
 	vi, err = vs.GetVersion(".")
 	if err != nil {
 		t.Error(err)
 	}
-	isEqual(t, "v6.0.0", vi.Version)
+	isEqual(t, "v6.0.0", vi.Version())
 
 	git.treehash = ""
 	env["CI_COMMIT_REF_NAME"] = "HEAD"
@@ -216,7 +216,7 @@ func Test_VersionStringer_GetVersion(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	isEqual(t, "v6.0.0-head.build", vi.Version)
+	isEqual(t, "v6.0.0-head.build", vi.Version())
 
 	delete(env, "CI_COMMIT_REF_NAME")
 	env["GITHUB_RUN_NUMBER"] = "789"
@@ -224,7 +224,7 @@ func Test_VersionStringer_GetVersion(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	isEqual(t, "v6.0.0-main.789", vi.Version)
+	isEqual(t, "v6.0.0-main.789", vi.Version())
 
 	env["CI_COMMIT_REF_NAME"] = "*Branch--.--ONE*-*"
 	env["GITHUB_RUN_NUMBER"] = "789"
@@ -232,14 +232,14 @@ func Test_VersionStringer_GetVersion(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	isEqual(t, "v6.0.0-branch-one.789", vi.Version)
+	isEqual(t, "v6.0.0-branch-one.789", vi.Version())
 
 	env["CI_COMMIT_REF_NAME"] = "main"
 	vi, err = vs.GetVersion(".")
 	if err != nil {
 		t.Error(err)
 	}
-	isEqual(t, "v6.0.0-main.789", vi.Version)
+	isEqual(t, "v6.0.0-main.789", vi.Version())
 }
 
 func Test_VersionStringer_GetVersionDetachedHEAD(t *testing.T) {
@@ -251,5 +251,5 @@ func Test_VersionStringer_GetVersionDetachedHEAD(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	isEqual(t, "v2.0.0", vi.Version)
+	isEqual(t, "v2.0.0", vi.Version())
 }

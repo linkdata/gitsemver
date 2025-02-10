@@ -31,6 +31,7 @@ var (
 	flagGoPackage = flag.Bool("gopackage", false, "write Go source with PkgName and PkgVersion")
 	flagNoFetch   = flag.Bool("nofetch", false, "don't fetch remote tags")
 	flagNoNewline = flag.Bool("nonewline", false, "don't print a newline after the output")
+	flagIncPatch  = flag.Bool("incpatch", false, "increment the patch level of the version")
 )
 
 func mainfn() int {
@@ -48,7 +49,10 @@ func mainfn() int {
 			if err == nil {
 				var vi gitsemver.VersionInfo
 				if vi, err = vs.GetVersion(repoDir); err == nil {
-					content := vi.Version
+					if *flagIncPatch {
+						vi.IncPatch()
+					}
+					content := vi.Version()
 					if *flagGoPackage {
 						content, err = vi.GoPackage(repoDir, *flagName)
 					}

@@ -156,27 +156,12 @@ func (vs *GitSemVer) GetBuild(repo string) (build string) {
 // GetVersion returns a VersionInfo for the source code in the Git repository.
 func (vs *GitSemVer) GetVersion(repo string) (vi VersionInfo, err error) {
 	if repo, err = vs.Git.CheckGitRepo(repo); err == nil {
-		var sametree bool
-		if vi.Tag, sametree = vs.GetTag(repo); vi.Tag != "" {
-			vi.Version = vi.Tag
+		if vi.Tag, vi.SameTree = vs.GetTag(repo); vi.Tag != "" {
 			vi.Build = vs.GetBuild(repo)
 			branchText, branchName := vs.GetBranch(repo)
 			vi.Branch = branchName
-
-			if vs.IsReleaseBranch(branchName) && sametree {
-				return
-			}
-
-			suffix := branchText
-			if vi.Build != "" {
-				if suffix != "" {
-					suffix += "."
-				}
-				suffix += vi.Build
-			}
-			if suffix != "" {
-				vi.Version += "-" + suffix
-			}
+			vi.BranchText = branchText
+			vi.IsRelease = vs.IsReleaseBranch(branchName)
 		}
 	}
 	return
