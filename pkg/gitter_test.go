@@ -193,3 +193,29 @@ func Test_DefaultGitter_FetchTags(t *testing.T) {
 	}
 	dg.FetchTags(".")
 }
+
+func Test_DefaultGitter_CreateDeleteTag(t *testing.T) {
+	dg, err := gitsemver.NewDefaultGitter("git")
+	if err != nil {
+		t.Error(err)
+	}
+	err = dg.CreateTag(".", "test-tag")
+	if err != nil {
+		t.Error(err)
+	}
+	err = dg.DeleteTag(".", "test-tag")
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func Test_DefaultGitter_PushTag(t *testing.T) {
+	dg, err := gitsemver.NewDefaultGitter("git")
+	if err != nil {
+		t.Error(err)
+	}
+	err = dg.PushTag(".", "v1.0.0")
+	if err != nil {
+		t.Error(err)
+	}
+}

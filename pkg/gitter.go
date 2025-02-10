@@ -30,6 +30,12 @@ type Gitter interface {
 	GetBuild(repo string) string
 	// FetchTags calls "git fetch --tags"
 	FetchTags(repo string) error
+	// CreateTag creates a new lightweight tag. Does nothing if tag is empty.
+	CreateTag(repo, tag string) error
+	// DeleteTag deletes the given tag. Does nothing if tag is empty.
+	DeleteTag(repo, tag string) (err error)
+	// PushTag pushes the given tag to the origin. Does nothing if tag is empty.
+	PushTag(repo, tag string) (err error)
 }
 
 type DefaultGitter string
@@ -47,12 +53,6 @@ var ErrNotDirectory = errors.New("not a directory")
 // Returns nil if it is, else an error.
 func checkDir(dir string) (err error) {
 	_, err = os.ReadDir(dir)
-	/*var fi os.FileInfo
-	if fi, err = os.Stat(dir); err == nil {
-		if !fi.IsDir() {
-			err = ErrNotDirectory
-		}
-	}*/
 	return
 }
 
@@ -172,5 +172,26 @@ func (dg DefaultGitter) GetBuild(repo string) string {
 
 func (dg DefaultGitter) FetchTags(repo string) (err error) {
 	err = exec.Command(string(dg), "-C", repo, "fetch", "--tags").Run() /* #nosec G204 */
+	return
+}
+
+func (dg DefaultGitter) CreateTag(repo, tag string) (err error) {
+	if tag != "" {
+		err = exec.Command(string(dg), "-C", repo, "tag", tag).Run() /* #nosec G204 */
+	}
+	return
+}
+
+func (dg DefaultGitter) DeleteTag(repo, tag string) (err error) {
+	if tag != "" {
+		err = exec.Command(string(dg), "-C", repo, "tag", "-d", tag).Run() /* #nosec G204 */
+	}
+	return
+}
+
+func (dg DefaultGitter) PushTag(repo, tag string) (err error) {
+	if tag != "" {
+		err = exec.Command(string(dg), "-C", repo, "push", "origin", tag).Run() /* #nosec G204 */
+	}
 	return
 }

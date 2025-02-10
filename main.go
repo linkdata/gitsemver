@@ -31,7 +31,7 @@ var (
 	flagGoPackage = flag.Bool("gopackage", false, "write Go source with PkgName and PkgVersion")
 	flagNoFetch   = flag.Bool("nofetch", false, "don't fetch remote tags")
 	flagNoNewline = flag.Bool("nonewline", false, "don't print a newline after the output")
-	flagIncPatch  = flag.Bool("incpatch", false, "increment the patch level of the version")
+	flagIncPatch  = flag.Bool("incpatch", false, "increment the patch level and create a new tag")
 )
 
 func mainfn() int {
@@ -42,6 +42,7 @@ func mainfn() int {
 
 	vs, err := gitsemver.New(*flagGit)
 	if err == nil {
+		var createTag string
 		if repoDir, err = vs.Git.CheckGitRepo(repoDir); err == nil {
 			if !*flagNoFetch {
 				err = vs.Git.FetchTags(repoDir)
@@ -50,7 +51,7 @@ func mainfn() int {
 				var vi gitsemver.VersionInfo
 				if vi, err = vs.GetVersion(repoDir); err == nil {
 					if *flagIncPatch {
-						vi.IncPatch()
+						createTag = vi.IncPatch()
 					}
 					content := vi.Version()
 					if *flagGoPackage {
@@ -65,12 +66,17 @@ func mainfn() int {
 							content += "\n"
 						}
 						if err = writeOutput(outpath, content); err == nil {
-							return 0
+							if err = vs.Git.CreateTag(repoDir, createTag); err == nil {
+								if err = vs.Git.PushTag(repoDir, createTag); err == nil {
+									return 0
+								}
+							}
 						}
 					}
 				}
 			}
 		}
+		_ = vs.Git.DeleteTag(repoDir, createTag)
 	}
 
 	retv := 125

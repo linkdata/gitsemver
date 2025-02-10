@@ -138,4 +138,16 @@ func (mg *MockGitter) FetchTags(repo string) error {
 	return nil
 }
 
+func (mg *MockGitter) CreateTag(repo, tag string) (err error) {
+	return
+}
+
+func (mg *MockGitter) DeleteTag(repo, tag string) (err error) {
+	return
+}
+
+func (mg *MockGitter) PushTag(repo, tag string) (err error) {
+	return
+}
+
 var _ gitsemver.Gitter = &MockGitter{}

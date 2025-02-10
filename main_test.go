@@ -11,7 +11,6 @@ func TestMainFn(t *testing.T) {
 	flag.Parse()
 	*flagGoPackage = true
 	*flagOut = "test.out"
-	*flagIncPatch = true
 	mainfn()
 	b, err := os.ReadFile("test.out")
 	if err == nil {
@@ -26,7 +25,6 @@ func TestMainFn(t *testing.T) {
 }
 
 func TestMainError(t *testing.T) {
-	flag.Parse()
 	exitFn = func(i int) {
 		if i == 0 {
 			t.Error(i)
@@ -35,6 +33,8 @@ func TestMainError(t *testing.T) {
 			t.Log("didn't get a syscall.Errno")
 		}
 	}
+	flag.Parse()
 	*flagOut = "/proc/.nonexistant"
+	*flagIncPatch = true
 	main()
 }

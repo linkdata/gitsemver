@@ -66,15 +66,17 @@ func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) 
 	return
 }
 
-// IncPatch increments the patch level of the version.
-func (vi *VersionInfo) IncPatch() {
+// IncPatch increments the patch level of the version, returning the new tag.
+func (vi *VersionInfo) IncPatch() string {
 	for strings.Count(vi.Tag, ".") < 2 {
 		vi.Tag += ".0"
 	}
 	patchindex := strings.LastIndexByte(vi.Tag, '.') + 1
 	if patchlevel, err := strconv.Atoi(vi.Tag[patchindex:]); err == nil {
 		vi.Tag = vi.Tag[:patchindex] + strconv.Itoa(patchlevel+1)
+		vi.SameTree = true
 	}
+	return vi.Tag
 }
 
 func CleanBranch(branch string) string {
