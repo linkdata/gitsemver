@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -86,13 +87,17 @@ func (dg DefaultGitter) CheckGitRepo(dir string) (repo string, err error) {
 	return
 }
 
+var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
+
 // GetTags returns all tags, sorted by version descending.
 // The latest tag is the first in the list.
 func (dg DefaultGitter) GetTags(repo string) (tags []string) {
 	if b, _ := exec.Command(string(dg), "-C", repo, "tag", "--sort=-v:refname").Output(); len(b) > 0 /* #nosec G204 */ {
 		for _, tag := range strings.Split(string(b), "\n") {
 			if tag = strings.TrimSpace(tag); len(tag) > 1 {
-				tags = append(tags, tag)
+				if reMatchSemver.MatchString(tag) {
+					tags = append(tags, tag)
+				}
 			}
 		}
 	}
@@ -118,7 +123,7 @@ func (dg DefaultGitter) GetTreeHash(repo, tag string) string {
 // GetClosestTag returns the closest semver tag for the given commit hash.
 func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string) {
 	_ = exec.Command(string(dg), "-C", repo, "fetch", "--unshallow").Run() //#nosec G204
-	if b, _ := exec.Command(string(dg), "-C", repo, "describe", "--tags", "--match=v[0-9]*", "--abbrev=0", commit).Output(); len(b) > 0 /* #nosec G204 */ {
+	if b, _ := exec.Command(string(dg), "-C", repo, "describe", "--tags", "--match=v[0-9]*", "--match=[0-9]*", "--abbrev=0", commit).Output(); len(b) > 0 /* #nosec G204 */ {
 		return strings.TrimSpace(string(b))
 	}
 	return ""

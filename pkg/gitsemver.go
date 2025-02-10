@@ -1,14 +1,8 @@
 package gitsemver
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
-)
-
-var (
-	// reCheckTag  = regexp.MustCompile(`^v\d+(\.\d+(\.\d+)?)?$`)
-	reOnlyWords = regexp.MustCompile(`[^\w]`)
 )
 
 type GitSemVer struct {

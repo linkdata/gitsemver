@@ -5,9 +5,14 @@ import (
 	"go/token"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+)
+
+var (
+	reOnlyWords = regexp.MustCompile(`[^\w]`)
 )
 
 type VersionInfo struct {
