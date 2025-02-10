@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/linkdata/gitsemver"
+	gitsemver "github.com/linkdata/gitsemver/pkg"
 )
 
 type MockEnvironment map[string]string

@@ -37,7 +37,7 @@ jobs:
           args: ./...
 
       - name: Build
-        run: go build ./...
+        run: go build .
 
       - name: actions-goveralls
         uses: shogo82148/actions-goveralls@v1

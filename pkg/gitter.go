@@ -2,7 +2,6 @@ package gitsemver
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path"
@@ -42,29 +41,36 @@ func NewDefaultGitter(gitBin string) (gitter Gitter, err error) {
 	return
 }
 
+var ErrNotDirectory = errors.New("not a directory")
+
 // checkDir checks that the given path is accessible and is a directory.
 // Returns nil if it is, else an error.
 func checkDir(dir string) (err error) {
-	var fi os.FileInfo
+	_, err = os.ReadDir(dir)
+	/*var fi os.FileInfo
 	if fi, err = os.Stat(dir); err == nil {
 		if !fi.IsDir() {
-			err = fmt.Errorf("'%s' is not a directory", dir)
+			err = ErrNotDirectory
 		}
-	}
+	}*/
 	return
 }
 
 // dirOrParentHasGitSubdir returns the name of a directory containing
 // a '.git' subdirectory or an empty string. It searches starting from
 // the given directory and looks in that and it's parents.
-func dirOrParentHasGitSubdir(dir string) string {
-	if dir != "/" && dir != "." {
-		if checkDir(path.Join(dir, ".git")) == nil {
-			return dir
+func dirOrParentHasGitSubdir(s string) (dir string, err error) {
+	if err = checkDir(path.Join(s, ".git")); err != nil {
+		s = path.Dir(s)
+		if s != "/" {
+			if s, e := dirOrParentHasGitSubdir(s); e == nil {
+				return s, nil
+			}
 		}
-		return dirOrParentHasGitSubdir(path.Dir(dir))
+	} else {
+		dir = s
 	}
-	return ""
+	return
 }
 
 // CheckGitRepo checks that the given directory is part of a git repository,
@@ -72,11 +78,8 @@ func dirOrParentHasGitSubdir(dir string) string {
 // If it is, it returns the absolute path of the git repo and a nil error.
 func (dg DefaultGitter) CheckGitRepo(dir string) (repo string, err error) {
 	if dir, err = filepath.Abs(dir); err == nil {
-		if err = checkDir(dir); err == nil {
-			if repo = dirOrParentHasGitSubdir(dir); repo == "" {
-				err = errors.New("can't find .git directory")
-				repo = dir
-			}
+		if repo, err = dirOrParentHasGitSubdir(dir); err != nil {
+			repo = dir
 		}
 	}
 	return

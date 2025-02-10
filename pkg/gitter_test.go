@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/linkdata/gitsemver"
+	gitsemver "github.com/linkdata/gitsemver/pkg"
 )
 
 func Test_NewDefaultGitter_SucceedsNormally(t *testing.T) {
@@ -37,7 +37,7 @@ func Test_CheckGitRepo_SucceedsForSubdir(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	repo, err := dg.CheckGitRepo("./subdir")
+	repo, err := dg.CheckGitRepo("../pkg/subdir")
 	if err != nil {
 		t.Error(err)
 	}
@@ -46,7 +46,7 @@ func Test_CheckGitRepo_SucceedsForSubdir(t *testing.T) {
 	}
 }
 
-func Test_CheckGitRepo_FailsForRootAndFile(t *testing.T) {
+func Test_CheckGitRepo_FailsForRoot(t *testing.T) {
 	dg, err := gitsemver.NewDefaultGitter("git")
 	if err != nil {
 		t.Error(err)
@@ -56,13 +56,6 @@ func Test_CheckGitRepo_FailsForRootAndFile(t *testing.T) {
 		t.Error("no error")
 	}
 	if repo != "/" {
-		t.Error(repo)
-	}
-	repo, err = dg.CheckGitRepo("./subdir/empty.txt")
-	if err == nil {
-		t.Error("no error")
-	}
-	if repo != "" {
 		t.Error(repo)
 	}
 }

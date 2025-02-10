@@ -3,7 +3,7 @@ package gitsemver_test
 import (
 	"testing"
 
-	"github.com/linkdata/gitsemver"
+	gitsemver "github.com/linkdata/gitsemver/pkg"
 )
 
 func Test_NewVersionStringer_SucceedsNormally(t *testing.T) {
