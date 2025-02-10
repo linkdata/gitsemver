@@ -116,6 +116,7 @@ func (dg DefaultGitter) GetTreeHash(repo, tag string) string {
 
 // GetClosestTag returns the closest semver tag for the given commit hash.
 func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string) {
+	_ = exec.Command(string(dg), "-C", repo, "fetch", "--unshallow").Run()
 	if b, _ := exec.Command(string(dg), "-C", repo, "describe", "--tags", "--match=v[0-9]*", "--abbrev=0", commit).Output(); len(b) > 0 /* #nosec G204 */ {
 		return strings.TrimSpace(string(b))
 	}
