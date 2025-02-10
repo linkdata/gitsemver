@@ -218,4 +218,10 @@ func Test_DefaultGitter_PushTag(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	err = dg.PushTag(".", "test-tag")
+	if err == nil {
+		t.Error("no error")
+	}
+	t.Log(err)
+
 }

@@ -2,6 +2,7 @@ package gitsemver
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path"
@@ -191,7 +192,11 @@ func (dg DefaultGitter) DeleteTag(repo, tag string) (err error) {
 
 func (dg DefaultGitter) PushTag(repo, tag string) (err error) {
 	if tag != "" {
-		err = exec.Command(string(dg), "-C", repo, "push", "origin", tag).Run() /* #nosec G204 */
+		var b []byte
+		b, err = exec.Command(string(dg), "-C", repo, "push", "origin", tag).CombinedOutput() /* #nosec G204 */
+		if err != nil {
+			err = fmt.Errorf("%w: %s", err, strings.TrimSpace(string(b)))
+		}
 	}
 	return
 }
