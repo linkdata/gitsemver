@@ -38,6 +38,7 @@ type MockGitter struct {
 	branch   string
 	treehash string
 	TopTag   string
+	dirty    bool
 }
 
 func (mg *MockGitter) CheckGitRepo(dir string) (repo string, err error) {
@@ -148,6 +149,10 @@ func (mg *MockGitter) DeleteTag(repo, tag string) (err error) {
 
 func (mg *MockGitter) PushTag(repo, tag string) (err error) {
 	return
+}
+
+func (mg *MockGitter) CleanStatus(repo string) bool {
+	return !mg.dirty
 }
 
 var _ gitsemver.Gitter = &MockGitter{}

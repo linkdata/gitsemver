@@ -221,7 +221,19 @@ func Test_DefaultGitter_PushTag(t *testing.T) {
 	err = dg.PushTag(".", "test-tag")
 	if err == nil {
 		t.Error("no error")
+	} else {
+		t.Log(err)
 	}
-	t.Log(err)
+}
 
+func Test_DefaultGitter_CleanStatus(t *testing.T) {
+	dg, err := gitsemver.NewDefaultGitter("git")
+	if err != nil {
+		t.Error(err)
+	}
+	if !dg.CleanStatus(".") {
+		t.Log("git status reports uncommitted changes")
+	} else {
+		t.Log("git status reports clean")
+	}
 }

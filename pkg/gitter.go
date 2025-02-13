@@ -38,9 +38,24 @@ type Gitter interface {
 	DeleteTag(repo, tag string) (err error)
 	// PushTag pushes the given tag to the origin. Does nothing if tag is empty.
 	PushTag(repo, tag string) (err error)
+	// CleanStatus returns true if there are no uncommitted changes in the repo
+	CleanStatus(repo string) bool
 }
 
 type DefaultGitter string
+
+func (dg DefaultGitter) execKeepError(args ...string) (err error) {
+	var b []byte
+	b, err = exec.Command(string(dg), args...).CombinedOutput() /* #nosec G204 */
+	if err != nil {
+		errText := err.Error()
+		if s := strings.TrimSpace(string(b)); s != "" {
+			errText = s
+		}
+		err = fmt.Errorf("%s %s: %q", string(dg), strings.Join(args, " "), errText)
+	}
+	return
+}
 
 func NewDefaultGitter(gitBin string) (gitter Gitter, err error) {
 	if gitBin, err = exec.LookPath(gitBin); err == nil {
@@ -122,7 +137,7 @@ func (dg DefaultGitter) GetTreeHash(repo, tag string) string {
 
 // GetClosestTag returns the closest semver tag for the given commit hash.
 func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string) {
-	_ = exec.Command(string(dg), "-C", repo, "fetch", "--unshallow").Run() //#nosec G204
+	_ = exec.Command(string(dg), "-C", repo, "fetch", "--unshallow", "--tags").Run() //#nosec G204
 	if b, _ := exec.Command(string(dg), "-C", repo, "describe", "--tags", "--match=v[0-9]*", "--match=[0-9]*", "--abbrev=0", commit).Output(); len(b) > 0 /* #nosec G204 */ {
 		return strings.TrimSpace(string(b))
 	}
@@ -183,25 +198,26 @@ func (dg DefaultGitter) FetchTags(repo string) (err error) {
 
 func (dg DefaultGitter) CreateTag(repo, tag string) (err error) {
 	if tag != "" {
-		err = exec.Command(string(dg), "-C", repo, "tag", tag).Run() /* #nosec G204 */
+		err = dg.execKeepError("-C", repo, "tag", tag)
 	}
 	return
 }
 
 func (dg DefaultGitter) DeleteTag(repo, tag string) (err error) {
 	if tag != "" {
-		err = exec.Command(string(dg), "-C", repo, "tag", "-d", tag).Run() /* #nosec G204 */
+		err = dg.execKeepError("-C", repo, "tag", "-d", tag)
 	}
 	return
 }
 
 func (dg DefaultGitter) PushTag(repo, tag string) (err error) {
 	if tag != "" {
-		var b []byte
-		b, err = exec.Command(string(dg), "-C", repo, "push", "origin", tag).CombinedOutput() /* #nosec G204 */
-		if err != nil {
-			err = fmt.Errorf("%w: %s", err, strings.TrimSpace(string(b)))
-		}
+		err = dg.execKeepError("-C", repo, "push", "origin", tag)
 	}
 	return
+}
+
+func (dg DefaultGitter) CleanStatus(repo string) bool {
+	b, _ := exec.Command(string(dg), "-C", repo, "status", "--untracked-files=no", "--porcelain").Output() /* #nosec G204 */
+	return len(strings.TrimSpace(string(b))) == 0
 }

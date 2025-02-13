@@ -28,6 +28,7 @@ var (
 	flagGit       = flag.String("git", "git", "path to Git executable")
 	flagOut       = flag.String("out", "", "write to file instead of stdout (relative paths are relative to repo)")
 	flagName      = flag.String("name", "", "override the Go PkgName, default is to use last portion of module in go.mod")
+	flagDebug     = flag.Bool("debug", false, "write debug info to stderr")
 	flagGoPackage = flag.Bool("gopackage", false, "write Go source with PkgName and PkgVersion")
 	flagNoFetch   = flag.Bool("nofetch", false, "don't fetch remote tags")
 	flagNoNewline = flag.Bool("nonewline", false, "don't print a newline after the output")
@@ -42,6 +43,9 @@ func mainfn() int {
 
 	vs, err := gitsemver.New(*flagGit)
 	if err == nil {
+		if *flagDebug {
+			vs.DebugOut = os.Stderr
+		}
 		var createTag string
 		if repoDir, err = vs.Git.CheckGitRepo(repoDir); err == nil {
 			if !*flagNoFetch {

@@ -35,6 +35,7 @@ func TestMainError(t *testing.T) {
 	}
 	flag.Parse()
 	*flagOut = "/proc/.nonexistant"
+	*flagDebug = true
 	*flagIncPatch = true
 	main()
 }

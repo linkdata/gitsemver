@@ -1,6 +1,7 @@
 package gitsemver_test
 
 import (
+	"bytes"
 	"testing"
 
 	gitsemver "github.com/linkdata/gitsemver/pkg"
@@ -27,12 +28,14 @@ func Test_NewVersionStringer_FailsWithBadBinary(t *testing.T) {
 }
 
 func isEqual[T comparable](t *testing.T, a, b T) {
+	t.Helper()
 	if a != b {
 		t.Errorf("%v != %v", a, b)
 	}
 }
 
 func isTrue(t *testing.T, v bool) {
+	t.Helper()
 	if !v {
 		t.Error(v)
 	}
@@ -241,4 +244,17 @@ func Test_VersionStringer_GetVersionDetachedHEAD(t *testing.T) {
 		t.Error(err)
 	}
 	isEqual(t, "v2.0.0", vi.Version())
+}
+
+func TestGitSemVer_Debug(t *testing.T) {
+	vs, err := gitsemver.New("git")
+	if err != nil {
+		t.Error(err)
+	}
+	var buf bytes.Buffer
+	vs.DebugOut = &buf
+	vs.Debug("foo")
+	if x := buf.String(); x != "foo" {
+		t.Error(x)
+	}
 }
