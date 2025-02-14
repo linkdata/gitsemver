@@ -20,8 +20,8 @@ type Gitter interface {
 	GetTags(repo string) (tags []string)
 	// GetCurrentTreeHash returns the current tree hash.
 	GetCurrentTreeHash(repo string) string
-	// GetTreeHash returns the tree hash for the given tag or commit.
-	GetTreeHash(repo, tag string) string
+	// GetHashes returns the commit and tree hashes for the given tag.
+	GetHashes(repo, tag string) (commit string, tree string)
 	// GetClosestTag returns the closest semver tag for the given commit hash.
 	GetClosestTag(repo, commit string) (tag string)
 	// GetBranch returns the current branch in the repository or an empty string.
@@ -127,17 +127,27 @@ func (dg DefaultGitter) GetCurrentTreeHash(repo string) string {
 	return ""
 }
 
-// GetTagTreeHash returns the tree hash for the given tag or commit hash.
-func (dg DefaultGitter) GetTreeHash(repo, tag string) string {
-	if b, _ := exec.Command(string(dg), "-C", repo, "rev-parse", tag+"^{tree}").Output(); len(b) > 0 /* #nosec G204 */ {
-		return strings.TrimSpace(string(b))
+// GetHashes returns the commit and tree hashes for the given tag.
+func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string) {
+	if b, _ := exec.Command(string(dg), "-C", repo, "rev-parse", tag, tag+"^{tree}").Output(); len(b) > 0 /* #nosec G204 */ {
+		hashes := strings.Split(strings.TrimSpace(string(b)), "\n")
+		if len(hashes) == 2 {
+			return hashes[0], hashes[1]
+		}
 	}
-	return ""
+	return
 }
 
 // GetClosestTag returns the closest semver tag for the given commit hash.
 func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string) {
 	_ = exec.Command(string(dg), "-C", repo, "fetch", "--unshallow", "--tags").Run() //#nosec G204
+	if commit == "HEAD" {
+		if b, _ := exec.Command(string(dg), "-C", repo, "rev-list", "--tags", "--max-count=1").Output(); len(b) > 0 /* #nosec G204 */ {
+			if tag = dg.GetClosestTag(repo, strings.TrimSpace(string(b))); tag != "" {
+				return
+			}
+		}
+	}
 	if b, _ := exec.Command(string(dg), "-C", repo, "describe", "--tags", "--match=v[0-9]*", "--match=[0-9]*", "--abbrev=0", commit).Output(); len(b) > 0 /* #nosec G204 */ {
 		return strings.TrimSpace(string(b))
 	}

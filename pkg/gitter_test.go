@@ -138,11 +138,11 @@ func Test_DefaultGitter_GetTreeHash(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if x := dg.GetTreeHash("/", "v1.0.0"); x != "" {
-		t.Error(x)
+	if x, y := dg.GetHashes("/", "v1.0.0"); x != "" || y != "" {
+		t.Error(x, y)
 	}
-	if x := dg.GetTreeHash(".", "v0.0.2"); x != "57562d5fc36ef21a9785fb6afd128e87ab302fae" {
-		t.Error(x)
+	if x, y := dg.GetHashes(".", "v0.0.2"); x != "f9a1633a72ca04515d517a830a2e2835a98767f6" || y != "57562d5fc36ef21a9785fb6afd128e87ab302fae" {
+		t.Error(x, y)
 	}
 }
 
@@ -157,6 +157,10 @@ func Test_DefaultGitter_GetClosestTag(t *testing.T) {
 	tag := dg.GetClosestTag(".", "f9a1633a72ca04515d517a830a2e2835a98767f6")
 	if tag != "v0.0.2" {
 		t.Error(tag)
+	}
+	tag = dg.GetClosestTag(".", "HEAD")
+	if tag == "" {
+		t.Error("no closest tag for HEAD")
 	}
 }
 

@@ -28,7 +28,13 @@ func Test_VersionInfo_GoPackage(t *testing.T) {
 }
 
 func Test_VersionInfo_IncPatch(t *testing.T) {
-	vi := &gitsemver.VersionInfo{Tag: "v1.2"}
+	vi := &gitsemver.VersionInfo{Tag: "v1.2", Tags: []gitsemver.GitTag{{Tag: "v1.2"}}}
+	if !vi.HasTag("v1.2") {
+		t.Error("!v1.2")
+	}
+	if vi.HasTag("v1.2.1") {
+		t.Error("v1.2.1")
+	}
 	vi.IncPatch()
 	if vi.Tag != "v1.2.1" {
 		t.Error(vi.Tag)

@@ -18,20 +18,14 @@ func (me MockEnvironment) LookupEnv(key string) (val string, ok bool) {
 	return
 }
 
-type mockCommit struct {
-	commithash string
-	treehash   string
-	tag        string
-}
-
-var mockHistory = []mockCommit{
-	{"HEAD", "tree-HEAD", ""},
-	{"commit-6", "tree-6", "v6.0.0"},
-	{"commit-5", "tree-5", ""},
-	{"commit-4", "tree-4", "v4.0.0"},
-	{"commit-3", "tree-3", ""},
-	{"commit-2", "tree-2", "v2.0.0"},
-	{"commit-1", "tree-1", ""},
+var mockHistory = []gitsemver.GitTag{
+	{"HEAD", "commit-7", "tree-7"},
+	{"v6.0.0", "commit-6", "tree-6"},
+	{"", "commit-5", "tree-5"},
+	{"v4.0.0", "commit-4", "tree-4"},
+	{"", "commit-3", "tree-3"},
+	{"v2.0.0", "commit-2", "tree-2"},
+	{"", "commit-1", "tree-1"},
 }
 
 type MockGitter struct {
@@ -48,20 +42,11 @@ func (mg *MockGitter) CheckGitRepo(dir string) (repo string, err error) {
 	return dir, os.ErrNotExist
 }
 
-func (mg *MockGitter) GetCommits(repo string) (commits []string) {
-	if repo == "." {
-		for _, h := range mockHistory {
-			commits = append(commits, h.commithash)
-		}
-	}
-	return
-}
-
 func (mg *MockGitter) GetTags(repo string) (tags []string) {
 	if repo == "." {
 		for _, h := range mockHistory {
-			if h.tag != "" {
-				tags = append(tags, h.tag)
+			if h.Tag != "" && h.Tag != "HEAD" {
+				tags = append(tags, h.Tag)
 			}
 		}
 	}
@@ -78,24 +63,34 @@ func (mg *MockGitter) GetCurrentTreeHash(repo string) string {
 	return ""
 }
 
-func (mg *MockGitter) GetTreeHash(repo, tag string) string {
+func (mg *MockGitter) GetHashes(repo, tag string) (commit, tree string) {
 	if repo == "." {
 		for _, h := range mockHistory {
-			if h.commithash == tag || h.tag == tag {
-				return h.treehash
+			if h.Tag == tag {
+				tree := h.Tree
+				if tag == "HEAD" && mg.treehash != "" {
+					tree = mg.treehash
+				}
+				return h.Commit, tree
 			}
 		}
 	}
-	return ""
+	return "", ""
 }
 
-func (mg *MockGitter) GetClosestTag(repo, commit string) (tag string) {
+func (mg *MockGitter) GetClosestTag(repo, from string) (tag string) {
 	if repo == "." {
+		if from == "HEAD" {
+			from = mg.treehash
+			if from == "" {
+				from = mockHistory[0].Tree
+			}
+		}
 		for i := range mockHistory {
-			if mockHistory[i].commithash == commit {
+			if mockHistory[i].Tree == from {
 				for i < len(mockHistory) {
-					if mockHistory[i].tag != "" {
-						return mockHistory[i].tag
+					if mockHistory[i].Tag != "" && mockHistory[i].Tag != "HEAD" {
+						return mockHistory[i].Tag
 					}
 					i++
 				}

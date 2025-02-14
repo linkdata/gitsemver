@@ -88,24 +88,27 @@ func Test_VersionStringer_IsReleaseBranch(t *testing.T) {
 func Test_VersionStringer_GetTag(t *testing.T) {
 	env := MockEnvironment{}
 	git := &MockGitter{}
-	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
 	var tag string
 	var sametree bool
 
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
 	tag, sametree = vs.GetTag("/")
 	isEqual(t, "v0.0.0", tag)
 	isEqual(t, false, sametree)
 
+	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	tag, sametree = vs.GetTag(".")
 	isEqual(t, "v6.0.0", tag)
 	isEqual(t, false, sametree)
 
+	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	git.treehash = "tree-4"
 	tag, sametree = vs.GetTag(".")
 	isEqual(t, "v4.0.0", tag)
 	isEqual(t, true, sametree)
 
+	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	git.treehash = ""
 	env["CI_COMMIT_TAG"] = "v3"
 	tag, sametree = vs.GetTag(".")
@@ -181,20 +184,22 @@ func Test_VersionStringer_GetBuild(t *testing.T) {
 func Test_VersionStringer_GetVersion(t *testing.T) {
 	env := MockEnvironment{}
 	git := &MockGitter{}
-	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
 	vi, err := vs.GetVersion("/") // invalid repo
 	if err == nil {
 		t.Error("no error")
 	}
 	isEqual(t, "", vi.Version())
 
+	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	vi, err = vs.GetVersion(".")
 	if err != nil {
 		t.Error(err)
 	}
 	isEqual(t, "v6.0.0-main.build", vi.Version())
 
+	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	git.treehash = "tree-6"
 	vi, err = vs.GetVersion(".")
 	if err != nil {
@@ -202,6 +207,7 @@ func Test_VersionStringer_GetVersion(t *testing.T) {
 	}
 	isEqual(t, "v6.0.0", vi.Version())
 
+	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	git.treehash = ""
 	env["CI_COMMIT_REF_NAME"] = "HEAD"
 	vi, err = vs.GetVersion(".")
@@ -210,6 +216,7 @@ func Test_VersionStringer_GetVersion(t *testing.T) {
 	}
 	isEqual(t, "v6.0.0-head.build", vi.Version())
 
+	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	delete(env, "CI_COMMIT_REF_NAME")
 	env["GITHUB_RUN_NUMBER"] = "789"
 	vi, err = vs.GetVersion(".")
@@ -218,6 +225,7 @@ func Test_VersionStringer_GetVersion(t *testing.T) {
 	}
 	isEqual(t, "v6.0.0-main.789", vi.Version())
 
+	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	env["CI_COMMIT_REF_NAME"] = "*Branch--.--ONE*-*"
 	env["GITHUB_RUN_NUMBER"] = "789"
 	vi, err = vs.GetVersion(".")
@@ -226,6 +234,7 @@ func Test_VersionStringer_GetVersion(t *testing.T) {
 	}
 	isEqual(t, "v6.0.0-branch-one.789", vi.Version())
 
+	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	env["CI_COMMIT_REF_NAME"] = "main"
 	vi, err = vs.GetVersion(".")
 	if err != nil {

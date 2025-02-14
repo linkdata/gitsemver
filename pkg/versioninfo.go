@@ -15,12 +15,19 @@ var (
 	reOnlyWords = regexp.MustCompile(`[^\w]`)
 )
 
+type GitTag struct {
+	Tag    string
+	Commit string
+	Tree   string
+}
+
 type VersionInfo struct {
-	Tag       string // git tag, e.g. "v1.2.3"
-	Branch    string // git branch, e.g. "Special--Branch"
-	Build     string // git or CI build number, e.g. "456"
-	SameTree  bool   // true if tree hash is identical
-	IsRelease bool   // true if the branch is a release branch
+	Tag       string   // git tag, e.g. "v1.2.3"
+	Branch    string   // git branch, e.g. "Special--Branch"
+	Build     string   // git or CI build number, e.g. "456"
+	SameTree  bool     // true if tree hash is identical
+	IsRelease bool     // true if the branch is a release branch
+	Tags      []GitTag // all tags and their tree hashes
 }
 
 func findPackageName(repo, s string) (pkgName string, err error) {
@@ -71,16 +78,30 @@ func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) 
 	return
 }
 
+func (vi *VersionInfo) HasTag(tag string) bool {
+	for _, gt := range vi.Tags {
+		if gt.Tag == tag {
+			return true
+		}
+	}
+	return false
+}
+
 // IncPatch increments the patch level of the version, returning the new tag.
 func (vi *VersionInfo) IncPatch() string {
 	for strings.Count(vi.Tag, ".") < 2 {
 		vi.Tag += ".0"
 	}
-	patchindex := strings.LastIndexByte(vi.Tag, '.') + 1
-	if patchlevel, err := strconv.Atoi(vi.Tag[patchindex:]); err == nil {
-		vi.Tag = vi.Tag[:patchindex] + strconv.Itoa(patchlevel+1)
-		vi.SameTree = true
+	for {
+		patchindex := strings.LastIndexByte(vi.Tag, '.') + 1
+		if patchlevel, err := strconv.Atoi(vi.Tag[patchindex:]); err == nil {
+			vi.Tag = vi.Tag[:patchindex] + strconv.Itoa(patchlevel+1)
+			if !vi.HasTag(vi.Tag) {
+				break
+			}
+		}
 	}
+	vi.SameTree = true
 	return vi.Tag
 }
 
