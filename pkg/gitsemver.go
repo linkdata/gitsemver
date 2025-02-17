@@ -164,9 +164,9 @@ func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string) {
 // can be found (for example, in detached HEAD state),
 // then an empty string is returned.
 func (vs *GitSemVer) GetBranch(repo string) (branchName string) {
-	if branchName = vs.getBranchGitHub(repo); branchName == "" {
-		if branchName = vs.getBranchGitLab(repo); branchName == "" {
-			branchName = vs.Git.GetBranch(repo)
+	if branchName = vs.Git.GetBranch(repo); branchName == "" {
+		if branchName = vs.getBranchGitHub(repo); branchName == "" {
+			branchName = vs.getBranchGitLab(repo)
 		}
 	}
 	return
