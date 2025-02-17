@@ -133,11 +133,13 @@ func (vs *GitSemVer) GetTag(repo string) (string, bool) {
 }
 
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string) {
-	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" {
-		if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" {
-			for _, branchName = range vs.Git.GetBranchesFromTag(repo, branchName) {
-				if vs.IsReleaseBranch(branchName) {
-					break
+	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName == "" {
+		if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" {
+			if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" {
+				for _, branchName = range vs.Git.GetBranchesFromTag(repo, branchName) {
+					if vs.IsReleaseBranch(branchName) {
+						break
+					}
 				}
 			}
 		}

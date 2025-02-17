@@ -143,6 +143,13 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	git.branch = ""
 
 	git.branch = "detached"
+	env["GITHUB_BASE_REF"] = "main"
+	name = vs.GetBranch(".")
+	isEqual(t, "main", name)
+	delete(env, "GITHUB_BASE_REF")
+	git.branch = ""
+
+	git.branch = "detached"
 	env["CI_COMMIT_REF_NAME"] = "gitlab---branch"
 	name = vs.GetBranch(".")
 	isEqual(t, "gitlab---branch", name)
