@@ -143,9 +143,9 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	git.branch = ""
 
 	git.branch = "detached"
-	env["GITHUB_BASE_REF"] = "main"
+	env["GITHUB_BASE_REF"] = "foobranch"
 	name = vs.GetBranch(".")
-	isEqual(t, "main", name)
+	isEqual(t, "foobranch", name)
 	delete(env, "GITHUB_BASE_REF")
 	git.branch = ""
 
