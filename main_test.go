@@ -24,6 +24,23 @@ func TestMainFn(t *testing.T) {
 	}
 }
 
+func TestMainFnBranch(t *testing.T) {
+	flag.Parse()
+	*flagBranch = true
+	*flagOut = "test.out"
+	mainfn()
+	b, err := os.ReadFile("test.out")
+	if err == nil {
+		defer os.Remove("test.out")
+		s := string(b)
+		if !strings.Contains(s, "main") {
+			t.Error(s)
+		}
+	} else {
+		t.Error(err)
+	}
+}
+
 func TestMainError(t *testing.T) {
 	exitFn = func(i int) {
 		if i == 0 {
