@@ -112,6 +112,7 @@ var (
         flagNoFetch   = flag.Bool("nofetch", false, "don't fetch remote tags")
         flagNoNewline = flag.Bool("nonewline", false, "don't print a newline after the output")
         flagIncPatch  = flag.Bool("incpatch", false, "increment the patch level and create a new tag")
+        flagBranch    = flag.Bool("branch", false, "print the current branch name")
 )
 
 func mainfn() int <span class="cov8" title="1">{
@@ -137,7 +138,10 @@ func mainfn() int <span class="cov8" title="1">{
                                                 createTag = vi.IncPatch()
                                         }</span>
                                         <span class="cov8" title="1">content := vi.Version()
-                                        if *flagGoPackage </span><span class="cov8" title="1">{
+                                        if *flagBranch </span><span class="cov8" title="1">{
+                                                content = vi.Branch
+                                        }</span>
+                                        <span class="cov8" title="1">if *flagGoPackage </span><span class="cov8" title="1">{
                                                 content, err = vi.GoPackage(repoDir, *flagName)
                                         }</span>
                                         <span class="cov8" title="1">if err == nil </span><span class="cov8" title="1">{
