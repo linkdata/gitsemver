@@ -1,0 +1,814 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>gitsemver: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/linkdata/gitsemver/main.go (100.0%)</option>
+				
+				<option value="file1">github.com/linkdata/gitsemver/pkg/environment.go (100.0%)</option>
+				
+				<option value="file2">github.com/linkdata/gitsemver/pkg/gitsemver.go (100.0%)</option>
+				
+				<option value="file3">github.com/linkdata/gitsemver/pkg/gitter.go (100.0%)</option>
+				
+				<option value="file4">github.com/linkdata/gitsemver/pkg/versioninfo.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "errors"
+        "flag"
+        "fmt"
+        "os"
+        "path"
+        "syscall"
+
+        gitsemver "github.com/linkdata/gitsemver/pkg"
+)
+
+func writeOutput(fileName, content string) (err error) <span class="cov8" title="1">{
+        f := os.Stdout
+        if len(fileName) &gt; 0 </span><span class="cov8" title="1">{
+                fileName = path.Clean(fileName)
+                if f, err = os.Create(fileName); err != nil /* #nosec G304 */ </span><span class="cov8" title="1">{
+                        return
+                }</span>
+                <span class="cov8" title="1">defer f.Close()</span>
+        }
+        <span class="cov8" title="1">_, err = f.WriteString(content)
+        return</span>
+}
+
+var (
+        flagGit       = flag.String("git", "git", "path to Git executable")
+        flagOut       = flag.String("out", "", "write to file instead of stdout (relative paths are relative to repo)")
+        flagName      = flag.String("name", "", "override the Go PkgName, default is to use last portion of module in go.mod")
+        flagDebug     = flag.Bool("debug", false, "write debug info to stderr")
+        flagGoPackage = flag.Bool("gopackage", false, "write Go source with PkgName and PkgVersion")
+        flagNoFetch   = flag.Bool("nofetch", false, "don't fetch remote tags")
+        flagNoNewline = flag.Bool("nonewline", false, "don't print a newline after the output")
+        flagIncPatch  = flag.Bool("incpatch", false, "increment the patch level and create a new tag")
+)
+
+func mainfn() int <span class="cov8" title="1">{
+        repoDir := os.ExpandEnv(flag.Arg(0))
+        if repoDir == "" </span><span class="cov8" title="1">{
+                repoDir = "."
+        }</span>
+
+        <span class="cov8" title="1">vs, err := gitsemver.New(*flagGit)
+        if err == nil </span><span class="cov8" title="1">{
+                if *flagDebug </span><span class="cov8" title="1">{
+                        vs.DebugOut = os.Stderr
+                }</span>
+                <span class="cov8" title="1">var createTag string
+                if repoDir, err = vs.Git.CheckGitRepo(repoDir); err == nil </span><span class="cov8" title="1">{
+                        if !*flagNoFetch </span><span class="cov8" title="1">{
+                                err = vs.Git.FetchTags(repoDir)
+                        }</span>
+                        <span class="cov8" title="1">if err == nil </span><span class="cov8" title="1">{
+                                var vi gitsemver.VersionInfo
+                                if vi, err = vs.GetVersion(repoDir); err == nil </span><span class="cov8" title="1">{
+                                        if *flagIncPatch </span><span class="cov8" title="1">{
+                                                createTag = vi.IncPatch()
+                                        }</span>
+                                        <span class="cov8" title="1">content := vi.Version()
+                                        if *flagGoPackage </span><span class="cov8" title="1">{
+                                                content, err = vi.GoPackage(repoDir, *flagName)
+                                        }</span>
+                                        <span class="cov8" title="1">if err == nil </span><span class="cov8" title="1">{
+                                                outpath := os.ExpandEnv(*flagOut)
+                                                if outpath != "" &amp;&amp; !path.IsAbs(outpath) </span><span class="cov8" title="1">{
+                                                        outpath = path.Join(repoDir, outpath)
+                                                }</span>
+                                                <span class="cov8" title="1">if !*flagNoNewline </span><span class="cov8" title="1">{
+                                                        content += "\n"
+                                                }</span>
+                                                <span class="cov8" title="1">if err = vs.Git.CreateTag(repoDir, createTag); err == nil </span><span class="cov8" title="1">{
+                                                        if err = vs.Git.PushTag(repoDir, createTag); err == nil </span><span class="cov8" title="1">{
+                                                                if err = writeOutput(outpath, content); err == nil </span><span class="cov8" title="1">{
+                                                                        return 0
+                                                                }</span>
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
+                <span class="cov8" title="1">_ = vs.Git.DeleteTag(repoDir, createTag)</span>
+        }
+
+        <span class="cov8" title="1">retv := 125
+        fmt.Fprintln(os.Stderr, err.Error())
+        if e := errors.Unwrap(err); e != nil </span><span class="cov8" title="1">{
+                if errno, ok := e.(syscall.Errno); ok </span><span class="cov8" title="1">{
+                        retv = int(errno)
+                }</span>
+        }
+        <span class="cov8" title="1">return retv</span>
+}
+
+var exitFn func(int) = os.Exit
+
+func main() <span class="cov8" title="1">{
+        flag.Parse()
+        exitFn(mainfn())
+}</span>
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package gitsemver
+
+import "os"
+
+// Environment allows us to mock the OS environment
+type Environment interface {
+        Getenv(string) string
+        LookupEnv(string) (string, bool)
+}
+
+// OsEnvironment calls the OS functions.
+type OsEnvironment struct{}
+
+func (OsEnvironment) Getenv(key string) string <span class="cov8" title="1">{
+        return os.Getenv(key)
+}</span>
+
+func (OsEnvironment) LookupEnv(key string) (string, bool) <span class="cov8" title="1">{
+        return os.LookupEnv(key)
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package gitsemver
+
+import (
+        "fmt"
+        "io"
+        "strconv"
+        "strings"
+)
+
+type GitSemVer struct {
+        Git         Gitter      // Git
+        Env         Environment // environment
+        DebugOut    io.Writer   // if nit nil, write debug output here
+        cleanstatus bool        // true if there are no uncommitted changes in current tree
+        tags        []GitTag    // tags
+}
+
+// New returns a GitSemVer ready to examine
+// the git repositories using the given Git binary.
+func New(gitBin string) (vs *GitSemVer, err error) <span class="cov8" title="1">{
+        var git Gitter
+        if git, err = NewDefaultGitter(gitBin); err == nil </span><span class="cov8" title="1">{
+                vs = &amp;GitSemVer{
+                        Git: git,
+                        Env: OsEnvironment{},
+                }
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+// IsEnvTrue returns true if the given environment variable
+// exists and is set to something that parses as true.
+func (vs *GitSemVer) IsEnvTrue(envvar string) (yes bool) <span class="cov8" title="1">{
+        yes, _ = strconv.ParseBool(vs.Env.Getenv(envvar))
+        return
+}</span>
+
+// IsReleaseBranch returns true if the given branch name should
+// be allowed to use 'release mode', where the version string
+// doesn't contains build information suffix.
+func (vs *GitSemVer) IsReleaseBranch(branchName string) bool <span class="cov8" title="1">{
+        // A GitLab or GitHub protected branch allows release mode.
+        if vs.IsEnvTrue("CI_COMMIT_REF_PROTECTED") || vs.IsEnvTrue("GITHUB_REF_PROTECTED") </span><span class="cov8" title="1">{
+                return true
+        }</span>
+
+        // If the branch isn't protected, we only allow release
+        // mode for the 'default' branch.
+
+        // GitLab gives us the default branch name directly.
+        <span class="cov8" title="1">if defBranch, ok := vs.Env.LookupEnv("CI_DEFAULT_BRANCH"); ok </span><span class="cov8" title="1">{
+                return branchName == strings.TrimSpace(defBranch)
+        }</span>
+
+        // Fallback to common default branch names.
+        <span class="cov8" title="1">switch branchName </span>{
+        case "":<span class="cov8" title="1"> // this is the case for a detached HEAD
+                return true</span>
+        case "default":<span class="cov8" title="1">
+                return true</span>
+        case "master":<span class="cov8" title="1">
+                return true</span>
+        case "main":<span class="cov8" title="1">
+                return true</span>
+        }
+
+        <span class="cov8" title="1">return false</span>
+}
+
+// Debug writes debugging output to DebugOut if it's not nil.
+func (vs *GitSemVer) Debug(f string, args ...any) <span class="cov8" title="1">{
+        if vs.DebugOut != nil </span><span class="cov8" title="1">{
+                _, _ = fmt.Fprintf(vs.DebugOut, f, args...)
+        }</span>
+}
+
+func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag) <span class="cov8" title="1">{
+        for i := range vs.tags </span><span class="cov8" title="1">{
+                if vs.tags[i].Tag == tag </span><span class="cov8" title="1">{
+                        return vs.tags[i]
+                }</span>
+        }
+        <span class="cov8" title="1">if commit, tree := vs.Git.GetHashes(repo, tag); commit != "" &amp;&amp; tree != "" </span><span class="cov8" title="1">{
+                gt.Tag = tag
+                gt.Commit = commit
+                gt.Tree = tree
+                vs.tags = append(vs.tags, gt)
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+func (vs *GitSemVer) examineTags(repo string) <span class="cov8" title="1">{
+        vs.cleanstatus = vs.Git.CleanStatus(repo)
+        headHashes := vs.getTreeHash(repo, "HEAD")
+        vs.Debug("treehash %s: HEAD (clean: %v)\n", headHashes.Tree, vs.cleanstatus)
+        for _, testtag := range vs.Git.GetTags(repo) </span><span class="cov8" title="1">{
+                tagtreehashes := vs.getTreeHash(repo, testtag)
+                if tagtreehashes.Tree != "" </span><span class="cov8" title="1">{
+                        vs.Debug("treehash %s: %q\n", tagtreehashes.Tree, testtag)
+                        if vs.cleanstatus &amp;&amp; tagtreehashes.Tree == headHashes.Tree </span><span class="cov8" title="1">{
+                                return
+                        }</span>
+                }
+        }
+}
+
+// GetTag returns the semver git version tag matching the current tree, or
+// the closest semver tag if none match exactly. It also returns a bool
+// that is true if the tree hashes match and there are no uncommitted changes.
+func (vs *GitSemVer) GetTag(repo string) (string, bool) <span class="cov8" title="1">{
+        vs.examineTags(repo)
+        if tag := strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")); tag != "" </span><span class="cov8" title="1">{
+                return tag, true
+        }</span>
+        <span class="cov8" title="1">head := vs.getTreeHash(repo, "HEAD")
+        for _, gt := range vs.tags </span><span class="cov8" title="1">{
+                if gt.Tag != "HEAD" &amp;&amp; gt.Tree == head.Tree </span><span class="cov8" title="1">{
+                        return gt.Tag, vs.cleanstatus
+                }</span>
+        }
+        <span class="cov8" title="1">if tag := vs.Git.GetClosestTag(repo, "HEAD"); tag != "" </span><span class="cov8" title="1">{
+                found := vs.getTreeHash(repo, tag)
+                for _, gt := range vs.tags </span><span class="cov8" title="1">{
+                        if gt.Tag != "HEAD" &amp;&amp; gt.Tree == found.Tree </span><span class="cov8" title="1">{
+                                found = gt
+                                break</span>
+                        }
+                }
+                <span class="cov8" title="1">vs.Debug("treehash %s: %q is closest to HEAD\n", found.Tree, found.Tag)
+                return found.Tag, vs.cleanstatus &amp;&amp; (found.Tree == head.Tree)</span>
+        }
+        <span class="cov8" title="1">return "v0.0.0", false</span>
+}
+
+func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string) <span class="cov8" title="1">{
+        if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName == "" </span><span class="cov8" title="1">{
+                if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" </span><span class="cov8" title="1">{
+                        if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" </span><span class="cov8" title="1">{
+                                for _, branchName = range vs.Git.GetBranchesFromTag(repo, branchName) </span><span class="cov8" title="1">{
+                                        if vs.IsReleaseBranch(branchName) </span><span class="cov8" title="1">{
+                                                break</span>
+                                        }
+                                }
+                        }
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string) <span class="cov8" title="1">{
+        if branchName = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_REF_NAME")); branchName != "" </span><span class="cov8" title="1">{
+                if strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")) == branchName </span><span class="cov8" title="1">{
+                        for _, branchName = range vs.Git.GetBranchesFromTag(repo, branchName) </span><span class="cov8" title="1">{
+                                if vs.IsReleaseBranch(branchName) </span><span class="cov8" title="1">{
+                                        break</span>
+                                }
+                        }
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// GetBranch returns the current branch as a string suitable
+// for inclusion in the semver text as well as the actual
+// branch name in the build system or Git. If no branch name
+// can be found (for example, in detached HEAD state),
+// then an empty string is returned.
+func (vs *GitSemVer) GetBranch(repo string) (branchName string) <span class="cov8" title="1">{
+        if branchName = vs.Git.GetBranch(repo); branchName == "" </span><span class="cov8" title="1">{
+                if branchName = vs.getBranchGitHub(repo); branchName == "" </span><span class="cov8" title="1">{
+                        branchName = vs.getBranchGitLab(repo)
+                }</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// GetBuild returns the build counter. This is taken from the CI system if available,
+// otherwise the Git commit count is used. Returns an empty string if no reasonable build
+// counter can be found.
+func (vs *GitSemVer) GetBuild(repo string) (build string) <span class="cov8" title="1">{
+        if build = strings.TrimSpace(vs.Env.Getenv("CI_PIPELINE_IID")); build == "" </span><span class="cov8" title="1">{
+                if build = strings.TrimSpace(vs.Env.Getenv("GITHUB_RUN_NUMBER")); build == "" </span><span class="cov8" title="1">{
+                        build = vs.Git.GetBuild(repo)
+                }</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// GetVersion returns a VersionInfo for the source code in the Git repository.
+func (vs *GitSemVer) GetVersion(repo string) (vi VersionInfo, err error) <span class="cov8" title="1">{
+        if repo, err = vs.Git.CheckGitRepo(repo); err == nil </span><span class="cov8" title="1">{
+                if vi.Tag, vi.SameTree = vs.GetTag(repo); vi.Tag != "" </span><span class="cov8" title="1">{
+                        vi.Build = vs.GetBuild(repo)
+                        vi.Branch = vs.GetBranch(repo)
+                        vi.IsRelease = vs.IsReleaseBranch(vi.Branch)
+                        vi.Tags = vs.tags
+                }</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package gitsemver
+
+import (
+        "errors"
+        "fmt"
+        "os"
+        "os/exec"
+        "path"
+        "path/filepath"
+        "regexp"
+        "strconv"
+        "strings"
+)
+
+// Gitter is an interface exposing the required Git functionality
+type Gitter interface {
+        // CheckGitRepo checks that the given directory is part of a git repository.
+        CheckGitRepo(dir string) (repo string, err error)
+        // GetTags returns all tags, sorted by version descending.
+        GetTags(repo string) (tags []string)
+        // GetCurrentTreeHash returns the current tree hash.
+        GetCurrentTreeHash(repo string) string
+        // GetHashes returns the commit and tree hashes for the given tag.
+        GetHashes(repo, tag string) (commit string, tree string)
+        // GetClosestTag returns the closest semver tag for the given commit hash.
+        GetClosestTag(repo, commit string) (tag string)
+        // GetBranch returns the current branch in the repository or an empty string.
+        GetBranch(repo string) string
+        // GetBranchesFromTag returns the non-HEAD branches in the repository that have the tag, otherwise an empty string.
+        GetBranchesFromTag(repo, tag string) []string
+        // GetBuild returns the number of commits in the currently checked out branch as a string, or an empty string
+        GetBuild(repo string) string
+        // FetchTags calls "git fetch --tags"
+        FetchTags(repo string) error
+        // CreateTag creates a new lightweight tag. Does nothing if tag is empty.
+        CreateTag(repo, tag string) error
+        // DeleteTag deletes the given tag. Does nothing if tag is empty.
+        DeleteTag(repo, tag string) (err error)
+        // PushTag pushes the given tag to the origin. Does nothing if tag is empty.
+        PushTag(repo, tag string) (err error)
+        // CleanStatus returns true if there are no uncommitted changes in the repo
+        CleanStatus(repo string) bool
+}
+
+type DefaultGitter string
+
+func (dg DefaultGitter) execKeepError(args ...string) (err error) <span class="cov8" title="1">{
+        var b []byte
+        b, err = exec.Command(string(dg), args...).CombinedOutput() /* #nosec G204 */
+        if err != nil </span><span class="cov8" title="1">{
+                errText := err.Error()
+                if s := strings.TrimSpace(string(b)); s != "" </span><span class="cov8" title="1">{
+                        errText = s
+                }</span>
+                <span class="cov8" title="1">err = fmt.Errorf("%s %s: %q", string(dg), strings.Join(args, " "), errText)</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+func NewDefaultGitter(gitBin string) (gitter Gitter, err error) <span class="cov8" title="1">{
+        if gitBin, err = exec.LookPath(gitBin); err == nil </span><span class="cov8" title="1">{
+                gitter = DefaultGitter(gitBin)
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+var ErrNotDirectory = errors.New("not a directory")
+
+// checkDir checks that the given path is accessible and is a directory.
+// Returns nil if it is, else an error.
+func checkDir(dir string) (err error) <span class="cov8" title="1">{
+        _, err = os.ReadDir(dir)
+        return
+}</span>
+
+// dirOrParentHasGitSubdir returns the name of a directory containing
+// a '.git' subdirectory or an empty string. It searches starting from
+// the given directory and looks in that and it's parents.
+func dirOrParentHasGitSubdir(s string) (dir string, err error) <span class="cov8" title="1">{
+        if err = checkDir(path.Join(s, ".git")); err != nil </span><span class="cov8" title="1">{
+                s = path.Dir(s)
+                if s != "/" </span><span class="cov8" title="1">{
+                        if s, e := dirOrParentHasGitSubdir(s); e == nil </span><span class="cov8" title="1">{
+                                return s, nil
+                        }</span>
+                }
+        } else<span class="cov8" title="1"> {
+                dir = s
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+// CheckGitRepo checks that the given directory is part of a git repository,
+// meaning that it or one of it's parent directories has a '.git' subdirectory.
+// If it is, it returns the absolute path of the git repo and a nil error.
+func (dg DefaultGitter) CheckGitRepo(dir string) (repo string, err error) <span class="cov8" title="1">{
+        if dir, err = filepath.Abs(dir); err == nil </span><span class="cov8" title="1">{
+                if repo, err = dirOrParentHasGitSubdir(dir); err != nil </span><span class="cov8" title="1">{
+                        repo = dir
+                }</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
+
+// GetTags returns all tags, sorted by version descending.
+// The latest tag is the first in the list.
+func (dg DefaultGitter) GetTags(repo string) (tags []string) <span class="cov8" title="1">{
+        if b, _ := exec.Command(string(dg), "-C", repo, "tag", "--sort=-v:refname").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                for _, tag := range strings.Split(string(b), "\n") </span><span class="cov8" title="1">{
+                        if tag = strings.TrimSpace(tag); len(tag) &gt; 1 </span><span class="cov8" title="1">{
+                                if reMatchSemver.MatchString(tag) </span><span class="cov8" title="1">{
+                                        tags = append(tags, tag)
+                                }</span>
+                        }
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// GetCurrentTreeHash returns the current tree hash.
+func (dg DefaultGitter) GetCurrentTreeHash(repo string) string <span class="cov8" title="1">{
+        if b, _ := exec.Command(string(dg), "-C", repo, "write-tree").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                return strings.TrimSpace(string(b))
+        }</span>
+        <span class="cov8" title="1">return ""</span>
+}
+
+// GetHashes returns the commit and tree hashes for the given tag.
+func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string) <span class="cov8" title="1">{
+        if b, _ := exec.Command(string(dg), "-C", repo, "rev-parse", tag, tag+"^{tree}").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                hashes := strings.Split(strings.TrimSpace(string(b)), "\n")
+                if len(hashes) == 2 </span><span class="cov8" title="1">{
+                        return hashes[0], hashes[1]
+                }</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+// GetClosestTag returns the closest semver tag for the given commit hash.
+func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string) <span class="cov8" title="1">{
+        _ = exec.Command(string(dg), "-C", repo, "fetch", "--unshallow", "--tags").Run() //#nosec G204
+        if commit == "HEAD" </span><span class="cov8" title="1">{
+                if b, _ := exec.Command(string(dg), "-C", repo, "rev-list", "--tags", "--max-count=1").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                        if tag = dg.GetClosestTag(repo, strings.TrimSpace(string(b))); tag != "" </span><span class="cov8" title="1">{
+                                return
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">if b, _ := exec.Command(string(dg), "-C", repo, "describe", "--tags", "--match=v[0-9]*", "--match=[0-9]*", "--abbrev=0", commit).Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                return strings.TrimSpace(string(b))
+        }</span>
+        <span class="cov8" title="1">return ""</span>
+}
+
+func LastName(s string) string <span class="cov8" title="1">{
+        if idx := strings.LastIndexByte(s, '/'); idx &gt; -1 </span><span class="cov8" title="1">{
+                s = s[idx+1:]
+        }</span>
+        <span class="cov8" title="1">return s</span>
+}
+
+func (dg DefaultGitter) GetBranchesFromTag(repo, tag string) (branches []string) <span class="cov8" title="1">{
+        tag = strings.TrimPrefix(tag, "refs/")
+        tag = strings.TrimPrefix(tag, "tags/")
+        if b, _ := exec.Command(string(dg), "-C", repo, "branch", "--all", "--no-color", "--contains", "tags/"+tag).Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                for _, s := range strings.Split(string(b), "\n") </span><span class="cov8" title="1">{
+                        if s = strings.TrimSpace(s); len(s) &gt; 1 </span><span class="cov8" title="1">{
+                                if !strings.Contains(s, "HEAD") </span><span class="cov8" title="1">{
+                                        starred := s[0] == '*'
+                                        s = strings.TrimSpace(strings.TrimPrefix(s, "*"))
+                                        if len(s) &gt; 0 &amp;&amp; !strings.Contains(s, " ") </span><span class="cov8" title="1">{
+                                                branches = append(branches, LastName(s))
+                                                if starred </span><span class="cov8" title="1">{
+                                                        branches = branches[len(branches)-1:]
+                                                        break</span>
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+func (dg DefaultGitter) GetBranch(repo string) (branch string) <span class="cov8" title="1">{
+        if b, _ := exec.Command(string(dg), "-C", repo, "branch", "--show-current").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                branch = strings.TrimSpace(string(b))
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+func (dg DefaultGitter) GetBuild(repo string) string <span class="cov8" title="1">{
+        if b, _ := exec.Command(string(dg), "-C", repo, "rev-list", "HEAD", "--count").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                str := strings.TrimSpace(string(b))
+                if num, err := strconv.Atoi(str); err == nil &amp;&amp; num &gt; 0 </span><span class="cov8" title="1">{
+                        return str
+                }</span>
+        }
+        <span class="cov8" title="1">return ""</span>
+}
+
+func (dg DefaultGitter) FetchTags(repo string) (err error) <span class="cov8" title="1">{
+        err = exec.Command(string(dg), "-C", repo, "fetch", "--tags").Run() /* #nosec G204 */
+        return
+}</span>
+
+func (dg DefaultGitter) CreateTag(repo, tag string) (err error) <span class="cov8" title="1">{
+        if tag != "" </span><span class="cov8" title="1">{
+                err = dg.execKeepError("-C", repo, "tag", tag)
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+func (dg DefaultGitter) DeleteTag(repo, tag string) (err error) <span class="cov8" title="1">{
+        if tag != "" </span><span class="cov8" title="1">{
+                err = dg.execKeepError("-C", repo, "tag", "-d", tag)
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+func (dg DefaultGitter) PushTag(repo, tag string) (err error) <span class="cov8" title="1">{
+        if tag != "" </span><span class="cov8" title="1">{
+                err = dg.execKeepError("-C", repo, "push", "origin", tag)
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+func (dg DefaultGitter) CleanStatus(repo string) bool <span class="cov8" title="1">{
+        b, _ := exec.Command(string(dg), "-C", repo, "status", "--untracked-files=no", "--porcelain").Output() /* #nosec G204 */
+        return len(strings.TrimSpace(string(b))) == 0
+}</span>
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package gitsemver
+
+import (
+        "fmt"
+        "go/token"
+        "os"
+        "path"
+        "regexp"
+        "strconv"
+        "strings"
+        "time"
+)
+
+var (
+        reOnlyWords = regexp.MustCompile(`[^\w]`)
+)
+
+type GitTag struct {
+        Tag    string
+        Commit string
+        Tree   string
+}
+
+type VersionInfo struct {
+        Tag       string   // git tag, e.g. "v1.2.3"
+        Branch    string   // git branch, e.g. "Special--Branch"
+        Build     string   // git or CI build number, e.g. "456"
+        SameTree  bool     // true if tree hash is identical
+        IsRelease bool     // true if the branch is a release branch
+        Tags      []GitTag // all tags and their tree hashes
+}
+
+func findPackageName(repo, s string) (pkgName string, err error) <span class="cov8" title="1">{
+        pkgName = s
+        if pkgName == "" </span><span class="cov8" title="1">{
+                var b []byte
+                if b, err = os.ReadFile(path.Join(repo, "go.mod")); /*#nosec G304*/ err == nil </span><span class="cov8" title="1">{
+                        for _, s := range strings.Split(string(b), "\n") </span><span class="cov8" title="1">{
+                                s = strings.TrimSpace(s)
+                                if strings.HasPrefix(s, "module") </span><span class="cov8" title="1">{
+                                        pkgName = LastName(s)
+                                }</span>
+                        }
+                }
+        }
+        <span class="cov8" title="1">if err == nil &amp;&amp; !token.IsIdentifier(pkgName) </span><span class="cov8" title="1">{
+                err = fmt.Errorf("%q is not a valid Go identifier", pkgName)
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
+
+const goPackageTemplate = `// Code generated%s at %s UTC DO NOT EDIT.
+// branch %q, build %s
+package %s
+
+const PkgName = %q
+const PkgVersion = %q
+`
+
+// GoPackage returns  a small piece of Go code defining global
+// variables named "PkgName" and "PkgVersion"
+// with the given pkgName in all lower case and the contents of Version.
+// If the pkgName isn't a valid Go identifier, an error is returned.
+func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) <span class="cov8" title="1">{
+        pkgName, err = findPackageName(repo, pkgName)
+        if err == nil </span><span class="cov8" title="1">{
+                generatedBy := ""
+                if executable, err := os.Executable(); err == nil </span><span class="cov8" title="1">{
+                        generatedBy = " by " + path.Base(executable)
+                }</span>
+                <span class="cov8" title="1">retv = fmt.Sprintf(goPackageTemplate,
+                        generatedBy, time.Now().UTC().Format(time.DateTime),
+                        vi.Branch, vi.Build,
+                        strings.ToLower(pkgName),
+                        pkgName,
+                        vi.Version())</span>
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+func (vi *VersionInfo) HasTag(tag string) bool <span class="cov8" title="1">{
+        for _, gt := range vi.Tags </span><span class="cov8" title="1">{
+                if gt.Tag == tag </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+        <span class="cov8" title="1">return false</span>
+}
+
+// IncPatch increments the patch level of the version, returning the new tag.
+func (vi *VersionInfo) IncPatch() string <span class="cov8" title="1">{
+        for strings.Count(vi.Tag, ".") &lt; 2 </span><span class="cov8" title="1">{
+                vi.Tag += ".0"
+        }</span>
+        <span class="cov8" title="1">for </span><span class="cov8" title="1">{
+                patchindex := strings.LastIndexByte(vi.Tag, '.') + 1
+                if patchlevel, err := strconv.Atoi(vi.Tag[patchindex:]); err == nil </span><span class="cov8" title="1">{
+                        vi.Tag = vi.Tag[:patchindex] + strconv.Itoa(patchlevel+1)
+                        if !vi.HasTag(vi.Tag) </span><span class="cov8" title="1">{
+                                break</span>
+                        }
+                }
+        }
+        <span class="cov8" title="1">vi.SameTree = true
+        return vi.Tag</span>
+}
+
+func CleanBranch(branch string) string <span class="cov8" title="1">{
+        branch = reOnlyWords.ReplaceAllString(branch, "-")
+        for </span><span class="cov8" title="1">{
+                if newSuffix := strings.ReplaceAll(branch, "--", "-"); newSuffix != branch </span><span class="cov8" title="1">{
+                        branch = newSuffix
+                        continue</span>
+                }
+                <span class="cov8" title="1">break</span>
+        }
+        <span class="cov8" title="1">branch = strings.TrimPrefix(branch, "-")
+        branch = strings.TrimSuffix(branch, "-")
+        branch = strings.ToLower(branch)
+        return branch</span>
+}
+
+// Version returns the composite version, e.g. "v1.2.3-mybranch.456"
+func (vi *VersionInfo) Version() (version string) <span class="cov8" title="1">{
+        if vi.Tag != "" </span><span class="cov8" title="1">{
+                version = vi.Tag
+                if !vi.IsRelease || !vi.SameTree </span><span class="cov8" title="1">{
+                        suffix := CleanBranch(vi.Branch)
+                        if vi.Build != "" </span><span class="cov8" title="1">{
+                                if suffix != "" </span><span class="cov8" title="1">{
+                                        suffix += "."
+                                }</span>
+                                <span class="cov8" title="1">suffix += vi.Build</span>
+                        }
+                        <span class="cov8" title="1">if suffix != "" </span><span class="cov8" title="1">{
+                                version += "-" + suffix
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
