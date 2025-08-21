@@ -12,19 +12,58 @@ match exactly, it falls back to the latest semver tag reachable from the
 current HEAD.
 
 If the match is not exact or the current branch is not the default branch
-or a protected branch, it creates a work-in-progress semver string like `v0.1.2-myfeature.123`.
+or a protected branch (`CI_COMMIT_REF_PROTECTED` or `GITHUB_REF_PROTECTED` are set), 
+it creates a work-in-progress semver string like `v0.1.2-myfeature.123`.
 
 Supports raw git repositories as well as GitLab and GitHub builders.
 
-## Print current version of a git repository
+### Installing
 
 ```sh
 $ go install github.com/linkdata/gitsemver@latest
+```
+
+### Command line parameters
+
+```
+Usage of gitsemver:
+  -debug
+        write debug info to stderr
+  -git string
+        path to Git executable (default "git")
+  -gopackage
+        write Go source with PkgName and PkgVersion
+  -incpatch
+        increment the patch level and create a new tag
+  -name string
+        override the Go PkgName, default is to use last portion of module in go.mod
+  -nofetch
+        don't fetch remote tags
+  -nonewline
+        don't print a newline after the output
+  -out string
+        write to file instead of stdout (relative paths are relative to repo)
+```
+
+### Examples
+
+#### Print current version of a git repository
+
+```sh
 $ gitsemver $HOME/myreleasedpackage
 v1.2.3
 ```
 
-## Generate a go package file with version information
+#### Increment the patch level and push a new lightweight tag to the origin
+
+```sh
+$ gitsemver
+v1.2.3-main.456
+$ gitsemver -incpatch
+v1.2.4
+```
+
+#### Generate a go package file with version information
 
 ```go
 //go:generate go run github.com/linkdata/gitsemver@latest -gopackage -out version.gen.go
