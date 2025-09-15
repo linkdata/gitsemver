@@ -85,6 +85,7 @@ import (
         "errors"
         "flag"
         "fmt"
+        "io"
         "os"
         "path"
         "syscall"
@@ -123,12 +124,14 @@ func mainfn() int <span class="cov8" title="1">{
                 repoDir = "."
         }</span>
 
-        <span class="cov8" title="1">vs, err := gitsemver.New(*flagGit)
+        <span class="cov8" title="1">var debugOut io.Writer
+        if *flagDebug </span><span class="cov8" title="1">{
+                debugOut = os.Stderr
+        }</span>
+
+        <span class="cov8" title="1">vs, err := gitsemver.New(*flagGit, debugOut)
         if err == nil </span><span class="cov8" title="1">{
-                if *flagDebug </span><span class="cov8" title="1">{
-                        vs.DebugOut = os.Stderr
-                }</span>
-                <span class="cov8" title="1">var createTag string
+                var createTag string
                 if repoDir, err = vs.Git.CheckGitRepo(repoDir); err == nil </span><span class="cov8" title="1">{
                         if !*flagNoFetch </span><span class="cov8" title="1">{
                                 err = vs.Git.FetchTags(repoDir)
@@ -279,12 +282,13 @@ type GitSemVer struct {
 
 // New returns a GitSemVer ready to examine
 // the git repositories using the given Git binary.
-func New(gitBin string) (vs *GitSemVer, err error) <span class="cov8" title="1">{
+func New(gitBin string, debugOut io.Writer) (vs *GitSemVer, err error) <span class="cov8" title="1">{
         var git Gitter
-        if git, err = NewDefaultGitter(gitBin); err == nil </span><span class="cov8" title="1">{
+        if git, err = NewDefaultGitter(gitBin, debugOut); err == nil </span><span class="cov8" title="1">{
                 vs = &amp;GitSemVer{
-                        Git: git,
-                        Env: OsEnvironment{},
+                        Git:      git,
+                        Env:      OsEnvironment{},
+                        DebugOut: debugOut,
                 }
         }</span>
         <span class="cov8" title="1">return</span>
@@ -493,6 +497,8 @@ func (vs *GitSemVer) GetVersion(repo string) (vi VersionInfo, err error) <span c
 import (
         "bytes"
         "errors"
+        "fmt"
+        "io"
         "os"
         "os/exec"
         "path"
@@ -533,27 +539,37 @@ type Gitter interface {
         CleanStatus(repo string) (yes bool, err error)
 }
 
-type DefaultGitter string
+type DefaultGitter struct {
+        Git      string
+        DebugOut io.Writer
+}
 
 func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) <span class="cov8" title="1">{
         var sout, serr bytes.Buffer
-        cmd := exec.Command(string(dg), args...) /* #nosec G204 */
+        cmd := exec.Command(dg.Git, args...) /* #nosec G204 */
         cmd.Stdout = &amp;sout
         cmd.Stderr = &amp;serr
         err = cmd.Run()
         output = bytes.TrimSpace(sout.Bytes())
         stderr := bytes.TrimSpace(serr.Bytes())
         if err != nil </span><span class="cov8" title="1">{
-                err = NewErrGitExec(string(dg), args, err, string(stderr))
+                err = NewErrGitExec(dg.Git, args, err, string(stderr))
         }</span> else<span class="cov8" title="1"> {
                 output = append(output, stderr...)
         }</span>
+        <span class="cov8" title="1">if dg.DebugOut != nil </span><span class="cov8" title="1">{
+                result := "OK"
+                if err != nil </span><span class="cov8" title="1">{
+                        result = err.Error()
+                }</span>
+                <span class="cov8" title="1">fmt.Fprintf(dg.DebugOut, "%q =&gt; (%v+%v) %v\n", strings.Join(cmd.Args, " "), len(output), len(stderr), result)</span>
+        }
         <span class="cov8" title="1">return</span>
 }
 
-func NewDefaultGitter(gitBin string) (gitter Gitter, err error) <span class="cov8" title="1">{
+func NewDefaultGitter(gitBin string, debugOut io.Writer) (gitter Gitter, err error) <span class="cov8" title="1">{
         if gitBin, err = exec.LookPath(gitBin); err == nil </span><span class="cov8" title="1">{
-                gitter = DefaultGitter(gitBin)
+                gitter = DefaultGitter{Git: gitBin, DebugOut: debugOut}
         }</span>
         <span class="cov8" title="1">return</span>
 }
@@ -704,7 +720,7 @@ func (dg DefaultGitter) GetBuild(repo string) (buildnum string, err error) <span
 }
 
 func (dg DefaultGitter) FetchTags(repo string) (err error) <span class="cov8" title="1">{
-        err = exec.Command(string(dg), "-C", repo, "fetch", "--tags").Run() /* #nosec G204 */
+        err = exec.Command(dg.Git, "-C", repo, "fetch", "--tags").Run() /* #nosec G204 */
         return
 }</span>
 
