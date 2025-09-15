@@ -91,29 +91,34 @@ func Test_VersionStringer_GetTag(t *testing.T) {
 
 	var tag string
 	var sametree bool
+	var err error
 
 	vs := gitsemver.GitSemVer{Git: git, Env: env}
-	tag, sametree = vs.GetTag("/")
+	tag, sametree, err = vs.GetTag("/")
 	isEqual(t, "v0.0.0", tag)
 	isEqual(t, false, sametree)
+	isEqual(t, err, nil)
 
 	vs = gitsemver.GitSemVer{Git: git, Env: env}
-	tag, sametree = vs.GetTag(".")
+	tag, sametree, err = vs.GetTag(".")
 	isEqual(t, "v6.0.0", tag)
 	isEqual(t, false, sametree)
+	isEqual(t, err, nil)
 
 	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	git.treehash = "tree-4"
-	tag, sametree = vs.GetTag(".")
+	tag, sametree, err = vs.GetTag(".")
 	isEqual(t, "v4.0.0", tag)
 	isEqual(t, true, sametree)
+	isEqual(t, err, nil)
 
 	vs = gitsemver.GitSemVer{Git: git, Env: env}
 	git.treehash = ""
 	env["CI_COMMIT_TAG"] = "v3"
-	tag, sametree = vs.GetTag(".")
+	tag, sametree, err = vs.GetTag(".")
 	isEqual(t, "v3", tag)
 	isEqual(t, true, sametree)
+	isEqual(t, err, nil)
 }
 
 func Test_VersionStringer_GetBranch(t *testing.T) {
@@ -122,13 +127,15 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
 	git.branch = "zomg"
-	name := vs.GetBranch(".")
+	name, err := vs.GetBranch(".")
+	isEqual(t, err, nil)
 	isEqual(t, "zomg", name)
 	git.branch = ""
 
 	git.branch = "detached"
 	env["GITHUB_REF_NAME"] = "github.branch"
-	name = vs.GetBranch(".")
+	name, err = vs.GetBranch(".")
+	isEqual(t, err, nil)
 	isEqual(t, "github.branch", name)
 	delete(env, "GITHUB_REF_NAME")
 	git.branch = ""
@@ -136,7 +143,8 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	git.branch = "detached"
 	env["GITHUB_REF_TYPE"] = "tag"
 	env["GITHUB_REF_NAME"] = "v1.0.0"
-	name = vs.GetBranch(".")
+	name, err = vs.GetBranch(".")
+	isEqual(t, err, nil)
 	isEqual(t, "main", name)
 	delete(env, "GITHUB_REF_TYPE")
 	delete(env, "GITHUB_REF_NAME")
@@ -144,14 +152,16 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 
 	git.branch = "detached"
 	env["GITHUB_BASE_REF"] = "foobranch"
-	name = vs.GetBranch(".")
+	name, err = vs.GetBranch(".")
+	isEqual(t, err, nil)
 	isEqual(t, "foobranch", name)
 	delete(env, "GITHUB_BASE_REF")
 	git.branch = ""
 
 	git.branch = "detached"
 	env["CI_COMMIT_REF_NAME"] = "gitlab---branch"
-	name = vs.GetBranch(".")
+	name, err = vs.GetBranch(".")
+	isEqual(t, err, nil)
 	isEqual(t, "gitlab---branch", name)
 	delete(env, "CI_COMMIT_REF_NAME")
 	git.branch = ""
@@ -159,7 +169,8 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	git.branch = "detached"
 	env["CI_COMMIT_TAG"] = "v1.0.0"
 	env["CI_COMMIT_REF_NAME"] = "v1.0.0"
-	name = vs.GetBranch(".")
+	name, err = vs.GetBranch(".")
+	isEqual(t, err, nil)
 	isEqual(t, "main", name)
 	delete(env, "CI_COMMIT_TAG")
 	delete(env, "CI_COMMIT_REF_NAME")
@@ -173,7 +184,8 @@ func Test_VersionStringer_GetBranchFromTag_GitLab(t *testing.T) {
 
 	env["CI_COMMIT_TAG"] = "v1.0.0"
 	env["CI_COMMIT_REF_NAME"] = "v1.0.0"
-	name := vs.GetBranch(".")
+	name, err := vs.GetBranch(".")
+	isEqual(t, err, nil)
 	isEqual(t, "main", name)
 }
 
@@ -184,12 +196,14 @@ func Test_VersionStringer_GetBranchFromTag_GitHub(t *testing.T) {
 
 	env["GITHUB_REF_TYPE"] = "tag"
 	env["GITHUB_REF_NAME"] = "v1.0.0"
-	name := vs.GetBranch(".")
+	name, err := vs.GetBranch(".")
+	isEqual(t, err, nil)
 	isEqual(t, "main", name)
 
 	git.branch = "detached"
 	env["GITHUB_REF_NAME"] = "v1"
-	name = vs.GetBranch(".")
+	name, err = vs.GetBranch(".")
+	isEqual(t, err, nil)
 	isEqual(t, "onepointoh", name)
 }
 
@@ -198,16 +212,19 @@ func Test_VersionStringer_GetBuild(t *testing.T) {
 	git := &MockGitter{}
 	vs := gitsemver.GitSemVer{Git: git, Env: env}
 
-	build := vs.GetBuild(".")
+	build, err := vs.GetBuild(".")
+	isEqual(t, err, nil)
 	isEqual(t, "build", build)
 
 	env["CI_PIPELINE_IID"] = "456"
-	build = vs.GetBuild(".")
+	build, err = vs.GetBuild(".")
+	isEqual(t, err, nil)
 	isEqual(t, "456", build)
 	delete(env, "CI_PIPELINE_IID")
 
 	env["GITHUB_RUN_NUMBER"] = "789"
-	build = vs.GetBuild(".")
+	build, err = vs.GetBuild(".")
+	isEqual(t, err, nil)
 	isEqual(t, "789", build)
 	delete(env, "CI_PIPELINE_IID")
 }

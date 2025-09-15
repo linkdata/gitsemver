@@ -1,6 +1,7 @@
 package gitsemver
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -74,13 +75,14 @@ func (vs *GitSemVer) Debug(f string, args ...any) {
 	}
 }
 
-func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag) {
+func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag, err error) {
 	for i := range vs.tags {
 		if vs.tags[i].Tag == tag {
-			return vs.tags[i]
+			return vs.tags[i], nil
 		}
 	}
-	if commit, tree := vs.Git.GetHashes(repo, tag); commit != "" && tree != "" {
+	var commit, tree string
+	if commit, tree, err = vs.Git.GetHashes(repo, tag); commit != "" && tree != "" && err == nil {
 		gt.Tag = tag
 		gt.Commit = commit
 		gt.Tree = tree
@@ -89,56 +91,22 @@ func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag) {
 	return
 }
 
-func (vs *GitSemVer) examineTags(repo string) {
-	vs.cleanstatus = vs.Git.CleanStatus(repo)
-	headHashes := vs.getTreeHash(repo, "HEAD")
-	vs.Debug("treehash %s: HEAD (clean: %v)\n", headHashes.Tree, vs.cleanstatus)
-	for _, testtag := range vs.Git.GetTags(repo) {
-		tagtreehashes := vs.getTreeHash(repo, testtag)
-		if tagtreehashes.Tree != "" {
-			vs.Debug("treehash %s: %q\n", tagtreehashes.Tree, testtag)
-			if vs.cleanstatus && tagtreehashes.Tree == headHashes.Tree {
-				return
-			}
-		}
-	}
-}
-
-// GetTag returns the semver git version tag matching the current tree, or
-// the closest semver tag if none match exactly. It also returns a bool
-// that is true if the tree hashes match and there are no uncommitted changes.
-func (vs *GitSemVer) GetTag(repo string) (string, bool) {
-	vs.examineTags(repo)
-	if tag := strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")); tag != "" {
-		return tag, true
-	}
-	head := vs.getTreeHash(repo, "HEAD")
-	for _, gt := range vs.tags {
-		if gt.Tag != "HEAD" && gt.Tree == head.Tree {
-			return gt.Tag, vs.cleanstatus
-		}
-	}
-	if tag := vs.Git.GetClosestTag(repo, "HEAD"); tag != "" {
-		found := vs.getTreeHash(repo, tag)
-		for _, gt := range vs.tags {
-			if gt.Tag != "HEAD" && gt.Tree == found.Tree {
-				found = gt
-				break
-			}
-		}
-		vs.Debug("treehash %s: %q is closest to HEAD\n", found.Tree, found.Tag)
-		return found.Tag, vs.cleanstatus && (found.Tree == head.Tree)
-	}
-	return "v0.0.0", false
-}
-
-func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string) {
-	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName == "" {
-		if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" {
-			if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" {
-				for _, branchName = range vs.Git.GetBranchesFromTag(repo, branchName) {
-					if vs.IsReleaseBranch(branchName) {
-						break
+func (vs *GitSemVer) examineTags(repo string) (err error) {
+	if vs.cleanstatus, err = vs.Git.CleanStatus(repo); err == nil {
+		var headHashes GitTag
+		if headHashes, err = vs.getTreeHash(repo, "HEAD"); err == nil {
+			vs.Debug("treehash %s: HEAD (clean: %v)\n", headHashes.Tree, vs.cleanstatus)
+			var tags []string
+			if tags, err = vs.Git.GetTags(repo); err == nil {
+				for _, testtag := range tags {
+					var tagtreehashes GitTag
+					if tagtreehashes, err = vs.getTreeHash(repo, testtag); err == nil {
+						if tagtreehashes.Tree != "" {
+							vs.Debug("treehash %s: %q\n", tagtreehashes.Tree, testtag)
+							if vs.cleanstatus && tagtreehashes.Tree == headHashes.Tree {
+								return
+							}
+						}
 					}
 				}
 			}
@@ -147,12 +115,68 @@ func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string) {
 	return
 }
 
-func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string) {
+// GetTag returns the semver git version tag matching the current tree, or
+// the closest semver tag if none match exactly. It also returns a bool
+// that is true if the tree hashes match and there are no uncommitted changes.
+func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) {
+	if tag = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")); tag != "" {
+		return tag, true, nil
+	}
+	tag = "v0.0.0"
+	if err = vs.examineTags(repo); err == nil {
+		var head GitTag
+		if head, err = vs.getTreeHash(repo, "HEAD"); err == nil {
+			for _, gt := range vs.tags {
+				if gt.Tag != "HEAD" && gt.Tree == head.Tree {
+					return gt.Tag, vs.cleanstatus, nil
+				}
+			}
+		}
+		var closeToHEAD string
+		if closeToHEAD, err = vs.Git.GetClosestTag(repo, "HEAD"); closeToHEAD != "" {
+			var found GitTag
+			if found, err = vs.getTreeHash(repo, closeToHEAD); err == nil {
+				for _, gt := range vs.tags {
+					if gt.Tag != "HEAD" && gt.Tree == found.Tree {
+						found = gt
+						break
+					}
+				}
+				vs.Debug("treehash %s: %q is closest to HEAD\n", found.Tree, found.Tag)
+				return found.Tag, vs.cleanstatus && (found.Tree == head.Tree), nil
+			}
+		}
+	}
+	return
+}
+
+func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) {
+	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName == "" {
+		if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" {
+			if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" {
+				var branches []string
+				if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil {
+					for _, branchName = range branches {
+						if vs.IsReleaseBranch(branchName) {
+							return
+						}
+					}
+				}
+			}
+		}
+	}
+	return
+}
+
+func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string, err error) {
 	if branchName = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_REF_NAME")); branchName != "" {
 		if strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")) == branchName {
-			for _, branchName = range vs.Git.GetBranchesFromTag(repo, branchName) {
-				if vs.IsReleaseBranch(branchName) {
-					break
+			var branches []string
+			if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil {
+				for _, branchName = range branches {
+					if vs.IsReleaseBranch(branchName) {
+						return
+					}
 				}
 			}
 		}
@@ -165,10 +189,10 @@ func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string) {
 // branch name in the build system or Git. If no branch name
 // can be found (for example, in detached HEAD state),
 // then an empty string is returned.
-func (vs *GitSemVer) GetBranch(repo string) (branchName string) {
-	if branchName = vs.Git.GetBranch(repo); branchName == "" {
-		if branchName = vs.getBranchGitHub(repo); branchName == "" {
-			branchName = vs.getBranchGitLab(repo)
+func (vs *GitSemVer) GetBranch(repo string) (branchName string, err error) {
+	if branchName, err = vs.Git.GetBranch(repo); branchName == "" {
+		if branchName, err = vs.getBranchGitHub(repo); branchName == "" {
+			branchName, err = vs.getBranchGitLab(repo)
 		}
 	}
 	return
@@ -177,10 +201,10 @@ func (vs *GitSemVer) GetBranch(repo string) (branchName string) {
 // GetBuild returns the build counter. This is taken from the CI system if available,
 // otherwise the Git commit count is used. Returns an empty string if no reasonable build
 // counter can be found.
-func (vs *GitSemVer) GetBuild(repo string) (build string) {
+func (vs *GitSemVer) GetBuild(repo string) (build string, err error) {
 	if build = strings.TrimSpace(vs.Env.Getenv("CI_PIPELINE_IID")); build == "" {
 		if build = strings.TrimSpace(vs.Env.Getenv("GITHUB_RUN_NUMBER")); build == "" {
-			build = vs.Git.GetBuild(repo)
+			build, err = vs.Git.GetBuild(repo)
 		}
 	}
 	return
@@ -189,9 +213,12 @@ func (vs *GitSemVer) GetBuild(repo string) (build string) {
 // GetVersion returns a VersionInfo for the source code in the Git repository.
 func (vs *GitSemVer) GetVersion(repo string) (vi VersionInfo, err error) {
 	if repo, err = vs.Git.CheckGitRepo(repo); err == nil {
-		if vi.Tag, vi.SameTree = vs.GetTag(repo); vi.Tag != "" {
-			vi.Build = vs.GetBuild(repo)
-			vi.Branch = vs.GetBranch(repo)
+		if vi.Tag, vi.SameTree, err = vs.GetTag(repo); vi.Tag != "" && err == nil {
+			var e error
+			vi.Build, e = vs.GetBuild(repo)
+			err = errors.Join(err, e)
+			vi.Branch, e = vs.GetBranch(repo)
+			err = errors.Join(err, e)
 			vi.IsRelease = vs.IsReleaseBranch(vi.Branch)
 			vi.Tags = vs.tags
 		}

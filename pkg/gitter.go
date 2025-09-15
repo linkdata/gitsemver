@@ -1,8 +1,8 @@
 package gitsemver
 
 import (
+	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path"
@@ -14,22 +14,23 @@ import (
 
 // Gitter is an interface exposing the required Git functionality
 type Gitter interface {
+	Exec(args ...string) (output []byte, err error)
 	// CheckGitRepo checks that the given directory is part of a git repository.
 	CheckGitRepo(dir string) (repo string, err error)
 	// GetTags returns all tags, sorted by version descending.
-	GetTags(repo string) (tags []string)
+	GetTags(repo string) (tags []string, err error)
 	// GetCurrentTreeHash returns the current tree hash.
-	GetCurrentTreeHash(repo string) string
+	GetCurrentTreeHash(repo string) (string, error)
 	// GetHashes returns the commit and tree hashes for the given tag.
-	GetHashes(repo, tag string) (commit string, tree string)
+	GetHashes(repo, tag string) (commit string, tree string, err error)
 	// GetClosestTag returns the closest semver tag for the given commit hash.
-	GetClosestTag(repo, commit string) (tag string)
+	GetClosestTag(repo, commit string) (tag string, err error)
 	// GetBranch returns the current branch in the repository or an empty string.
-	GetBranch(repo string) string
+	GetBranch(repo string) (branch string, err error)
 	// GetBranchesFromTag returns the non-HEAD branches in the repository that have the tag, otherwise an empty string.
-	GetBranchesFromTag(repo, tag string) []string
+	GetBranchesFromTag(repo, tag string) (branches []string, err error)
 	// GetBuild returns the number of commits in the currently checked out branch as a string, or an empty string
-	GetBuild(repo string) string
+	GetBuild(repo string) (string, error)
 	// FetchTags calls "git fetch --tags"
 	FetchTags(repo string) error
 	// CreateTag creates a new lightweight tag. Does nothing if tag is empty.
@@ -39,20 +40,23 @@ type Gitter interface {
 	// PushTag pushes the given tag to the origin. Does nothing if tag is empty.
 	PushTag(repo, tag string) (err error)
 	// CleanStatus returns true if there are no uncommitted changes in the repo
-	CleanStatus(repo string) bool
+	CleanStatus(repo string) (yes bool, err error)
 }
 
 type DefaultGitter string
 
-func (dg DefaultGitter) execKeepError(args ...string) (err error) {
-	var b []byte
-	b, err = exec.Command(string(dg), args...).CombinedOutput() /* #nosec G204 */
+func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) {
+	var sout, serr bytes.Buffer
+	cmd := exec.Command(string(dg), args...) /* #nosec G204 */
+	cmd.Stdout = &sout
+	cmd.Stderr = &serr
+	err = cmd.Run()
+	output = bytes.TrimSpace(sout.Bytes())
+	stderr := bytes.TrimSpace(serr.Bytes())
 	if err != nil {
-		errText := err.Error()
-		if s := strings.TrimSpace(string(b)); s != "" {
-			errText = s
-		}
-		err = fmt.Errorf("%s %s: %q", string(dg), strings.Join(args, " "), errText)
+		err = NewErrGitExec(string(dg), args, err, string(stderr))
+	} else {
+		output = append(output, stderr...)
 	}
 	return
 }
@@ -106,8 +110,9 @@ var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
 
 // GetTags returns all tags, sorted by version descending.
 // The latest tag is the first in the list.
-func (dg DefaultGitter) GetTags(repo string) (tags []string) {
-	if b, _ := exec.Command(string(dg), "-C", repo, "tag", "--sort=-v:refname").Output(); len(b) > 0 /* #nosec G204 */ {
+func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) {
+	var b []byte
+	if b, err = dg.Exec("-C", repo, "tag", "--sort=-v:refname"); len(b) > 0 /* #nosec G204 */ {
 		for _, tag := range strings.Split(string(b), "\n") {
 			if tag = strings.TrimSpace(tag); len(tag) > 1 {
 				if reMatchSemver.MatchString(tag) {
@@ -120,38 +125,41 @@ func (dg DefaultGitter) GetTags(repo string) (tags []string) {
 }
 
 // GetCurrentTreeHash returns the current tree hash.
-func (dg DefaultGitter) GetCurrentTreeHash(repo string) string {
-	if b, _ := exec.Command(string(dg), "-C", repo, "write-tree").Output(); len(b) > 0 /* #nosec G204 */ {
-		return strings.TrimSpace(string(b))
+func (dg DefaultGitter) GetCurrentTreeHash(repo string) (hash string, err error) {
+	var b []byte
+	if b, err = dg.Exec("-C", repo, "write-tree"); len(b) > 0 /* #nosec G204 */ {
+		hash = string(b)
 	}
-	return ""
+	return
 }
 
 // GetHashes returns the commit and tree hashes for the given tag.
-func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string) {
-	if b, _ := exec.Command(string(dg), "-C", repo, "rev-parse", tag, tag+"^{tree}").Output(); len(b) > 0 /* #nosec G204 */ {
+func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string, err error) {
+	var b []byte
+	if b, err = dg.Exec("-C", repo, "rev-parse", tag, tag+"^{tree}"); err == nil && len(b) > 0 /* #nosec G204 */ {
 		hashes := strings.Split(strings.TrimSpace(string(b)), "\n")
 		if len(hashes) == 2 {
-			return hashes[0], hashes[1]
+			commit, tree = hashes[0], hashes[1]
 		}
 	}
 	return
 }
 
 // GetClosestTag returns the closest semver tag for the given commit hash.
-func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string) {
-	_ = exec.Command(string(dg), "-C", repo, "fetch", "--unshallow", "--tags").Run() //#nosec G204
+func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string, err error) {
+	_, _ = dg.Exec("-C", repo, "fetch", "--unshallow", "--tags") // ignore "unshallow on a complete repository does not make sense"
+	var b []byte
 	if commit == "HEAD" {
-		if b, _ := exec.Command(string(dg), "-C", repo, "rev-list", "--tags", "--max-count=1").Output(); len(b) > 0 /* #nosec G204 */ {
-			if tag = dg.GetClosestTag(repo, strings.TrimSpace(string(b))); tag != "" {
+		if b, err = dg.Exec("-C", repo, "rev-list", "--tags", "--max-count=1"); err == nil && len(b) > 0 /* #nosec G204 */ {
+			if tag, err = dg.GetClosestTag(repo, strings.TrimSpace(string(b))); tag != "" {
 				return
 			}
 		}
 	}
-	if b, _ := exec.Command(string(dg), "-C", repo, "describe", "--tags", "--match=v[0-9]*", "--match=[0-9]*", "--abbrev=0", commit).Output(); len(b) > 0 /* #nosec G204 */ {
-		return strings.TrimSpace(string(b))
+	if b, err = dg.Exec("-C", repo, "describe", "--tags", "--match=v[0-9]*", "--match=[0-9]*", "--abbrev=0", commit); len(b) > 0 /* #nosec G204 */ {
+		tag = strings.TrimSpace(string(b))
 	}
-	return ""
+	return
 }
 
 func LastName(s string) string {
@@ -161,10 +169,11 @@ func LastName(s string) string {
 	return s
 }
 
-func (dg DefaultGitter) GetBranchesFromTag(repo, tag string) (branches []string) {
+func (dg DefaultGitter) GetBranchesFromTag(repo, tag string) (branches []string, err error) {
 	tag = strings.TrimPrefix(tag, "refs/")
 	tag = strings.TrimPrefix(tag, "tags/")
-	if b, _ := exec.Command(string(dg), "-C", repo, "branch", "--all", "--no-color", "--contains", "tags/"+tag).Output(); len(b) > 0 /* #nosec G204 */ {
+	var b []byte
+	if b, err = dg.Exec("-C", repo, "branch", "--all", "--no-color", "--contains", "tags/"+tag); len(b) > 0 /* #nosec G204 */ {
 		for _, s := range strings.Split(string(b), "\n") {
 			if s = strings.TrimSpace(s); len(s) > 1 {
 				if !strings.Contains(s, "HEAD") {
@@ -184,21 +193,24 @@ func (dg DefaultGitter) GetBranchesFromTag(repo, tag string) (branches []string)
 	return
 }
 
-func (dg DefaultGitter) GetBranch(repo string) (branch string) {
-	if b, _ := exec.Command(string(dg), "-C", repo, "branch", "--show-current").Output(); len(b) > 0 /* #nosec G204 */ {
+func (dg DefaultGitter) GetBranch(repo string) (branch string, err error) {
+	var b []byte
+	if b, err = dg.Exec("-C", repo, "branch", "--show-current"); len(b) > 0 /* #nosec G204 */ {
 		branch = strings.TrimSpace(string(b))
 	}
 	return
 }
 
-func (dg DefaultGitter) GetBuild(repo string) string {
-	if b, _ := exec.Command(string(dg), "-C", repo, "rev-list", "HEAD", "--count").Output(); len(b) > 0 /* #nosec G204 */ {
+func (dg DefaultGitter) GetBuild(repo string) (buildnum string, err error) {
+	var b []byte
+	if b, err = dg.Exec("-C", repo, "rev-list", "HEAD", "--count"); err == nil && len(b) > 0 /* #nosec G204 */ {
 		str := strings.TrimSpace(string(b))
-		if num, err := strconv.Atoi(str); err == nil && num > 0 {
-			return str
+		var num int
+		if num, err = strconv.Atoi(str); err == nil && num > 0 {
+			buildnum = str
 		}
 	}
-	return ""
+	return
 }
 
 func (dg DefaultGitter) FetchTags(repo string) (err error) {
@@ -208,26 +220,29 @@ func (dg DefaultGitter) FetchTags(repo string) (err error) {
 
 func (dg DefaultGitter) CreateTag(repo, tag string) (err error) {
 	if tag != "" {
-		err = dg.execKeepError("-C", repo, "tag", tag)
+		_, err = dg.Exec("-C", repo, "tag", tag)
 	}
 	return
 }
 
 func (dg DefaultGitter) DeleteTag(repo, tag string) (err error) {
 	if tag != "" {
-		err = dg.execKeepError("-C", repo, "tag", "-d", tag)
+		_, err = dg.Exec("-C", repo, "tag", "-d", tag)
 	}
 	return
 }
 
 func (dg DefaultGitter) PushTag(repo, tag string) (err error) {
 	if tag != "" {
-		err = dg.execKeepError("-C", repo, "push", "origin", tag)
+		_, err = dg.Exec("-C", repo, "push", "origin", tag)
 	}
 	return
 }
 
-func (dg DefaultGitter) CleanStatus(repo string) bool {
-	b, _ := exec.Command(string(dg), "-C", repo, "status", "--untracked-files=no", "--porcelain").Output() /* #nosec G204 */
-	return len(strings.TrimSpace(string(b))) == 0
+func (dg DefaultGitter) CleanStatus(repo string) (yes bool, err error) {
+	var b []byte
+	if b, err = dg.Exec("-C", repo, "status", "--untracked-files=no", "--porcelain"); err == nil {
+		yes = len(b) == 0
+	}
+	return
 }

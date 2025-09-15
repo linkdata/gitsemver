@@ -35,6 +35,10 @@ type MockGitter struct {
 	dirty    bool
 }
 
+func (mg *MockGitter) Exec(args ...string) (output []byte, err error) {
+	return
+}
+
 func (mg *MockGitter) CheckGitRepo(dir string) (repo string, err error) {
 	if dir == "." {
 		return ".", nil
@@ -42,7 +46,7 @@ func (mg *MockGitter) CheckGitRepo(dir string) (repo string, err error) {
 	return dir, os.ErrNotExist
 }
 
-func (mg *MockGitter) GetTags(repo string) (tags []string) {
+func (mg *MockGitter) GetTags(repo string) (tags []string, err error) {
 	if repo == "." {
 		for _, h := range mockHistory {
 			if h.Tag != "" && h.Tag != "HEAD" {
@@ -53,17 +57,17 @@ func (mg *MockGitter) GetTags(repo string) (tags []string) {
 	return
 }
 
-func (mg *MockGitter) GetCurrentTreeHash(repo string) string {
+func (mg *MockGitter) GetCurrentTreeHash(repo string) (string, error) {
 	if repo == "." {
 		if mg.treehash == "" {
-			return "tree-HEAD"
+			return "tree-HEAD", nil
 		}
-		return mg.treehash
+		return mg.treehash, nil
 	}
-	return ""
+	return "", nil
 }
 
-func (mg *MockGitter) GetHashes(repo, tag string) (commit, tree string) {
+func (mg *MockGitter) GetHashes(repo, tag string) (commit, tree string, err error) {
 	if repo == "." {
 		for _, h := range mockHistory {
 			if h.Tag == tag {
@@ -71,14 +75,14 @@ func (mg *MockGitter) GetHashes(repo, tag string) (commit, tree string) {
 				if tag == "HEAD" && mg.treehash != "" {
 					tree = mg.treehash
 				}
-				return h.Commit, tree
+				return h.Commit, tree, nil
 			}
 		}
 	}
-	return "", ""
+	return "", "", nil
 }
 
-func (mg *MockGitter) GetClosestTag(repo, from string) (tag string) {
+func (mg *MockGitter) GetClosestTag(repo, from string) (tag string, err error) {
 	if repo == "." {
 		if from == "HEAD" {
 			from = mg.treehash
@@ -90,7 +94,7 @@ func (mg *MockGitter) GetClosestTag(repo, from string) (tag string) {
 			if mockHistory[i].Tree == from {
 				for i < len(mockHistory) {
 					if mockHistory[i].Tag != "" && mockHistory[i].Tag != "HEAD" {
-						return mockHistory[i].Tag
+						return mockHistory[i].Tag, nil
 					}
 					i++
 				}
@@ -100,20 +104,20 @@ func (mg *MockGitter) GetClosestTag(repo, from string) (tag string) {
 	return
 }
 
-func (mg *MockGitter) GetBranch(repo string) string {
+func (mg *MockGitter) GetBranch(repo string) (branch string, err error) {
 	if repo == "." {
 		if mg.branch == "detached" {
-			return ""
+			return "", nil
 		}
 		if mg.branch == "" {
-			return "main"
+			return "main", nil
 		}
-		return mg.branch
+		return mg.branch, nil
 	}
-	return ""
+	return "", nil
 }
 
-func (mg *MockGitter) GetBranchesFromTag(repo, tag string) (branches []string) {
+func (mg *MockGitter) GetBranchesFromTag(repo, tag string) (branches []string, err error) {
 	if strings.HasPrefix(tag, "v1.0") {
 		branches = append(branches, "main")
 	}
@@ -123,11 +127,11 @@ func (mg *MockGitter) GetBranchesFromTag(repo, tag string) (branches []string) {
 	return
 }
 
-func (mg *MockGitter) GetBuild(repo string) string {
+func (mg *MockGitter) GetBuild(repo string) (string, error) {
 	if repo == "." {
-		return "build"
+		return "build", nil
 	}
-	return ""
+	return "", nil
 }
 
 func (mg *MockGitter) FetchTags(repo string) error {
@@ -146,8 +150,8 @@ func (mg *MockGitter) PushTag(repo, tag string) (err error) {
 	return
 }
 
-func (mg *MockGitter) CleanStatus(repo string) bool {
-	return !mg.dirty
+func (mg *MockGitter) CleanStatus(repo string) (bool, error) {
+	return !mg.dirty, nil
 }
 
 var _ gitsemver.Gitter = &MockGitter{}

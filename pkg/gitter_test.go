@@ -88,11 +88,11 @@ func Test_DefaultGitter_GetBranch(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if x := dg.GetBranch("."); x == "" {
-		t.Error("x is empty")
+	if x, err := dg.GetBranch("."); x == "" {
+		t.Error("x is empty", err)
 	}
-	if x := dg.GetBranch("/"); x != "" {
-		t.Error(x)
+	if x, err := dg.GetBranch("/"); x != "" {
+		t.Error(x, err)
 	}
 }
 
@@ -110,12 +110,15 @@ func Test_DefaultGitter_GetTags(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if x := dg.GetTags("/"); x != nil {
-		t.Error(x)
+	if x, err := dg.GetTags("/"); x != nil {
+		t.Error(x, err)
 	}
-	alltags := dg.GetTags(".")
+	alltags, err := dg.GetTags(".")
 	if len(alltags) == 0 {
 		t.Error("no tags")
+	}
+	if err != nil {
+		t.Error(err)
 	}
 }
 
@@ -124,12 +127,15 @@ func Test_DefaultGitter_GetCurrentTreeHash(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if x := dg.GetCurrentTreeHash("/"); x != "" {
-		t.Error(x)
+	if x, err := dg.GetCurrentTreeHash("/"); x != "" {
+		t.Error(x, err)
 	}
-	s := dg.GetCurrentTreeHash(".")
+	s, err := dg.GetCurrentTreeHash(".")
 	if len(s) == 0 {
 		t.Error("no tree hash")
+	}
+	if err != nil {
+		t.Error(err)
 	}
 }
 
@@ -138,11 +144,11 @@ func Test_DefaultGitter_GetTreeHash(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if x, y := dg.GetHashes("/", "v1.0.0"); x != "" || y != "" {
-		t.Error(x, y)
+	if x, y, err := dg.GetHashes("/", "v1.0.0"); x != "" || y != "" {
+		t.Error(x, y, err)
 	}
-	if x, y := dg.GetHashes(".", "v0.0.2"); x != "f9a1633a72ca04515d517a830a2e2835a98767f6" || y != "57562d5fc36ef21a9785fb6afd128e87ab302fae" {
-		t.Error(x, y)
+	if x, y, err := dg.GetHashes(".", "v0.0.2"); x != "f9a1633a72ca04515d517a830a2e2835a98767f6" || y != "57562d5fc36ef21a9785fb6afd128e87ab302fae" {
+		t.Error(x, y, err)
 	}
 }
 
@@ -151,14 +157,20 @@ func Test_DefaultGitter_GetClosestTag(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if x := dg.GetClosestTag("/", ""); x != "" {
-		t.Error(x)
+	if x, err := dg.GetClosestTag("/", ""); x != "" {
+		t.Error(x, err)
 	}
-	tag := dg.GetClosestTag(".", "f9a1633a72ca04515d517a830a2e2835a98767f6")
+	tag, err := dg.GetClosestTag(".", "f9a1633a72ca04515d517a830a2e2835a98767f6")
+	if err != nil {
+		t.Error(err)
+	}
 	if tag != "v0.0.2" {
 		t.Error(tag)
 	}
-	tag = dg.GetClosestTag(".", "HEAD")
+	tag, err = dg.GetClosestTag(".", "HEAD")
+	if err != nil {
+		t.Error(err)
+	}
 	if tag == "" {
 		t.Error("no closest tag for HEAD")
 	}
@@ -169,11 +181,11 @@ func Test_DefaultGitter_GetBranchFromTag(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if x := dg.GetBranchesFromTag("/", "refs/tags/v1.0.0"); x != nil {
-		t.Error(x)
+	if x, err := dg.GetBranchesFromTag("/", "refs/tags/v1.0.0"); x != nil {
+		t.Error(x, err)
 	}
-	if x := dg.GetBranchesFromTag(".", "refs/tags/v0.0.2"); slices.Compare(x, []string{"main"}) != 0 {
-		t.Error(x)
+	if x, err := dg.GetBranchesFromTag(".", "refs/tags/v0.0.2"); slices.Compare(x, []string{"main"}) != 0 {
+		t.Error(x, err)
 	}
 }
 
@@ -182,11 +194,11 @@ func Test_DefaultGitter_GetBuild(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if x := dg.GetBuild("/"); x != "" {
-		t.Error(x)
+	if x, err := dg.GetBuild("/"); x != "" {
+		t.Error(x, err)
 	}
-	if x := dg.GetBuild("."); x == "" {
-		t.Error(x)
+	if x, err := dg.GetBuild("."); x == "" {
+		t.Error(x, err)
 	}
 }
 
@@ -235,7 +247,11 @@ func Test_DefaultGitter_CleanStatus(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if !dg.CleanStatus(".") {
+	isclean, err := dg.CleanStatus(".")
+	if err != nil {
+		t.Error(err)
+	}
+	if !isclean {
 		t.Log("git status reports uncommitted changes")
 	} else {
 		t.Log("git status reports clean")
