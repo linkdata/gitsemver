@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -57,6 +58,8 @@ func MaybeSync(w io.Writer) {
 }
 
 func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 	var sout, serr bytes.Buffer
 	cmd := exec.Command(dg.Git, args...) /* #nosec G204 */
 	cmd.Stdout = &sout
