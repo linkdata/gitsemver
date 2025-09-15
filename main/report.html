@@ -59,11 +59,13 @@
 				
 				<option value="file1">github.com/linkdata/gitsemver/pkg/environment.go (100.0%)</option>
 				
-				<option value="file2">github.com/linkdata/gitsemver/pkg/gitsemver.go (100.0%)</option>
+				<option value="file2">github.com/linkdata/gitsemver/pkg/errgitexec.go (100.0%)</option>
 				
-				<option value="file3">github.com/linkdata/gitsemver/pkg/gitter.go (100.0%)</option>
+				<option value="file3">github.com/linkdata/gitsemver/pkg/gitsemver.go (100.0%)</option>
 				
-				<option value="file4">github.com/linkdata/gitsemver/pkg/versioninfo.go (100.0%)</option>
+				<option value="file4">github.com/linkdata/gitsemver/pkg/gitter.go (100.0%)</option>
+				
+				<option value="file5">github.com/linkdata/gitsemver/pkg/versioninfo.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -209,6 +211,58 @@ func (OsEnvironment) LookupEnv(key string) (string, bool) <span class="cov8" tit
 		<pre class="file" id="file2" style="display: none">package gitsemver
 
 import (
+        "strconv"
+)
+
+type errGitExec struct {
+        git    string
+        args   []string
+        err    error
+        stderr string
+}
+
+var ErrGitExec = &amp;errGitExec{}
+
+func NewErrGitExec(git string, args []string, err error, stderr string) error <span class="cov8" title="1">{
+        return &amp;errGitExec{
+                git:    git,
+                args:   args,
+                err:    err,
+                stderr: stderr,
+        }
+}</span>
+
+func (err *errGitExec) Error() string <span class="cov8" title="1">{
+        var b []byte
+        if err.git != "" </span><span class="cov8" title="1">{
+                b = append(b, err.git...)
+                for _, arg := range err.args </span><span class="cov8" title="1">{
+                        b = append(b, ' ')
+                        b = strconv.AppendQuote(b, arg)
+                }</span>
+                <span class="cov8" title="1">b = append(b, ": "...)</span>
+        }
+        <span class="cov8" title="1">if len(err.stderr) &gt; 0 </span><span class="cov8" title="1">{
+                b = append(b, err.stderr...)
+        }</span> else<span class="cov8" title="1"> if err.err != nil </span><span class="cov8" title="1">{
+                b = append(b, err.err.Error()...)
+        }</span>
+        <span class="cov8" title="1">return string(b)</span>
+}
+
+func (err *errGitExec) Is(other error) bool <span class="cov8" title="1">{
+        return other == ErrGitExec
+}</span>
+
+func (err *errGitExec) Unwrap() error <span class="cov8" title="1">{
+        return err.err
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package gitsemver
+
+import (
+        "errors"
         "fmt"
         "io"
         "strconv"
@@ -282,13 +336,14 @@ func (vs *GitSemVer) Debug(f string, args ...any) <span class="cov8" title="1">{
         }</span>
 }
 
-func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag) <span class="cov8" title="1">{
+func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag, err error) <span class="cov8" title="1">{
         for i := range vs.tags </span><span class="cov8" title="1">{
                 if vs.tags[i].Tag == tag </span><span class="cov8" title="1">{
-                        return vs.tags[i]
+                        return vs.tags[i], nil
                 }</span>
         }
-        <span class="cov8" title="1">if commit, tree := vs.Git.GetHashes(repo, tag); commit != "" &amp;&amp; tree != "" </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">var commit, tree string
+        if commit, tree, err = vs.Git.GetHashes(repo, tag); commit != "" &amp;&amp; tree != "" &amp;&amp; err == nil </span><span class="cov8" title="1">{
                 gt.Tag = tag
                 gt.Commit = commit
                 gt.Tree = tree
@@ -297,56 +352,22 @@ func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag) <span class="cov8
         <span class="cov8" title="1">return</span>
 }
 
-func (vs *GitSemVer) examineTags(repo string) <span class="cov8" title="1">{
-        vs.cleanstatus = vs.Git.CleanStatus(repo)
-        headHashes := vs.getTreeHash(repo, "HEAD")
-        vs.Debug("treehash %s: HEAD (clean: %v)\n", headHashes.Tree, vs.cleanstatus)
-        for _, testtag := range vs.Git.GetTags(repo) </span><span class="cov8" title="1">{
-                tagtreehashes := vs.getTreeHash(repo, testtag)
-                if tagtreehashes.Tree != "" </span><span class="cov8" title="1">{
-                        vs.Debug("treehash %s: %q\n", tagtreehashes.Tree, testtag)
-                        if vs.cleanstatus &amp;&amp; tagtreehashes.Tree == headHashes.Tree </span><span class="cov8" title="1">{
-                                return
-                        }</span>
-                }
-        }
-}
-
-// GetTag returns the semver git version tag matching the current tree, or
-// the closest semver tag if none match exactly. It also returns a bool
-// that is true if the tree hashes match and there are no uncommitted changes.
-func (vs *GitSemVer) GetTag(repo string) (string, bool) <span class="cov8" title="1">{
-        vs.examineTags(repo)
-        if tag := strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")); tag != "" </span><span class="cov8" title="1">{
-                return tag, true
-        }</span>
-        <span class="cov8" title="1">head := vs.getTreeHash(repo, "HEAD")
-        for _, gt := range vs.tags </span><span class="cov8" title="1">{
-                if gt.Tag != "HEAD" &amp;&amp; gt.Tree == head.Tree </span><span class="cov8" title="1">{
-                        return gt.Tag, vs.cleanstatus
-                }</span>
-        }
-        <span class="cov8" title="1">if tag := vs.Git.GetClosestTag(repo, "HEAD"); tag != "" </span><span class="cov8" title="1">{
-                found := vs.getTreeHash(repo, tag)
-                for _, gt := range vs.tags </span><span class="cov8" title="1">{
-                        if gt.Tag != "HEAD" &amp;&amp; gt.Tree == found.Tree </span><span class="cov8" title="1">{
-                                found = gt
-                                break</span>
-                        }
-                }
-                <span class="cov8" title="1">vs.Debug("treehash %s: %q is closest to HEAD\n", found.Tree, found.Tag)
-                return found.Tag, vs.cleanstatus &amp;&amp; (found.Tree == head.Tree)</span>
-        }
-        <span class="cov8" title="1">return "v0.0.0", false</span>
-}
-
-func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string) <span class="cov8" title="1">{
-        if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName == "" </span><span class="cov8" title="1">{
-                if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" </span><span class="cov8" title="1">{
-                        if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" </span><span class="cov8" title="1">{
-                                for _, branchName = range vs.Git.GetBranchesFromTag(repo, branchName) </span><span class="cov8" title="1">{
-                                        if vs.IsReleaseBranch(branchName) </span><span class="cov8" title="1">{
-                                                break</span>
+func (vs *GitSemVer) examineTags(repo string) (err error) <span class="cov8" title="1">{
+        if vs.cleanstatus, err = vs.Git.CleanStatus(repo); err == nil </span><span class="cov8" title="1">{
+                var headHashes GitTag
+                if headHashes, err = vs.getTreeHash(repo, "HEAD"); err == nil </span><span class="cov8" title="1">{
+                        vs.Debug("treehash %s: HEAD (clean: %v)\n", headHashes.Tree, vs.cleanstatus)
+                        var tags []string
+                        if tags, err = vs.Git.GetTags(repo); err == nil </span><span class="cov8" title="1">{
+                                for _, testtag := range tags </span><span class="cov8" title="1">{
+                                        var tagtreehashes GitTag
+                                        if tagtreehashes, err = vs.getTreeHash(repo, testtag); err == nil </span><span class="cov8" title="1">{
+                                                if tagtreehashes.Tree != "" </span><span class="cov8" title="1">{
+                                                        vs.Debug("treehash %s: %q\n", tagtreehashes.Tree, testtag)
+                                                        if vs.cleanstatus &amp;&amp; tagtreehashes.Tree == headHashes.Tree </span><span class="cov8" title="1">{
+                                                                return
+                                                        }</span>
+                                                }
                                         }
                                 }
                         }
@@ -355,12 +376,68 @@ func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string) <span clas
         <span class="cov8" title="1">return</span>
 }
 
-func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string) <span class="cov8" title="1">{
+// GetTag returns the semver git version tag matching the current tree, or
+// the closest semver tag if none match exactly. It also returns a bool
+// that is true if the tree hashes match and there are no uncommitted changes.
+func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) <span class="cov8" title="1">{
+        if tag = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")); tag != "" </span><span class="cov8" title="1">{
+                return tag, true, nil
+        }</span>
+        <span class="cov8" title="1">tag = "v0.0.0"
+        if err = vs.examineTags(repo); err == nil </span><span class="cov8" title="1">{
+                var head GitTag
+                if head, err = vs.getTreeHash(repo, "HEAD"); err == nil </span><span class="cov8" title="1">{
+                        for _, gt := range vs.tags </span><span class="cov8" title="1">{
+                                if gt.Tag != "HEAD" &amp;&amp; gt.Tree == head.Tree </span><span class="cov8" title="1">{
+                                        return gt.Tag, vs.cleanstatus, nil
+                                }</span>
+                        }
+                }
+                <span class="cov8" title="1">var closeToHEAD string
+                if closeToHEAD, err = vs.Git.GetClosestTag(repo, "HEAD"); closeToHEAD != "" </span><span class="cov8" title="1">{
+                        var found GitTag
+                        if found, err = vs.getTreeHash(repo, closeToHEAD); err == nil </span><span class="cov8" title="1">{
+                                for _, gt := range vs.tags </span><span class="cov8" title="1">{
+                                        if gt.Tag != "HEAD" &amp;&amp; gt.Tree == found.Tree </span><span class="cov8" title="1">{
+                                                found = gt
+                                                break</span>
+                                        }
+                                }
+                                <span class="cov8" title="1">vs.Debug("treehash %s: %q is closest to HEAD\n", found.Tree, found.Tag)
+                                return found.Tag, vs.cleanstatus &amp;&amp; (found.Tree == head.Tree), nil</span>
+                        }
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) <span class="cov8" title="1">{
+        if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName == "" </span><span class="cov8" title="1">{
+                if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" </span><span class="cov8" title="1">{
+                        if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" </span><span class="cov8" title="1">{
+                                var branches []string
+                                if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil </span><span class="cov8" title="1">{
+                                        for _, branchName = range branches </span><span class="cov8" title="1">{
+                                                if vs.IsReleaseBranch(branchName) </span><span class="cov8" title="1">{
+                                                        return
+                                                }</span>
+                                        }
+                                }
+                        }
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
+func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string, err error) <span class="cov8" title="1">{
         if branchName = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_REF_NAME")); branchName != "" </span><span class="cov8" title="1">{
                 if strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")) == branchName </span><span class="cov8" title="1">{
-                        for _, branchName = range vs.Git.GetBranchesFromTag(repo, branchName) </span><span class="cov8" title="1">{
-                                if vs.IsReleaseBranch(branchName) </span><span class="cov8" title="1">{
-                                        break</span>
+                        var branches []string
+                        if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil </span><span class="cov8" title="1">{
+                                for _, branchName = range branches </span><span class="cov8" title="1">{
+                                        if vs.IsReleaseBranch(branchName) </span><span class="cov8" title="1">{
+                                                return
+                                        }</span>
                                 }
                         }
                 }
@@ -373,10 +450,10 @@ func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string) <span clas
 // branch name in the build system or Git. If no branch name
 // can be found (for example, in detached HEAD state),
 // then an empty string is returned.
-func (vs *GitSemVer) GetBranch(repo string) (branchName string) <span class="cov8" title="1">{
-        if branchName = vs.Git.GetBranch(repo); branchName == "" </span><span class="cov8" title="1">{
-                if branchName = vs.getBranchGitHub(repo); branchName == "" </span><span class="cov8" title="1">{
-                        branchName = vs.getBranchGitLab(repo)
+func (vs *GitSemVer) GetBranch(repo string) (branchName string, err error) <span class="cov8" title="1">{
+        if branchName, err = vs.Git.GetBranch(repo); branchName == "" </span><span class="cov8" title="1">{
+                if branchName, err = vs.getBranchGitHub(repo); branchName == "" </span><span class="cov8" title="1">{
+                        branchName, err = vs.getBranchGitLab(repo)
                 }</span>
         }
         <span class="cov8" title="1">return</span>
@@ -385,10 +462,10 @@ func (vs *GitSemVer) GetBranch(repo string) (branchName string) <span class="cov
 // GetBuild returns the build counter. This is taken from the CI system if available,
 // otherwise the Git commit count is used. Returns an empty string if no reasonable build
 // counter can be found.
-func (vs *GitSemVer) GetBuild(repo string) (build string) <span class="cov8" title="1">{
+func (vs *GitSemVer) GetBuild(repo string) (build string, err error) <span class="cov8" title="1">{
         if build = strings.TrimSpace(vs.Env.Getenv("CI_PIPELINE_IID")); build == "" </span><span class="cov8" title="1">{
                 if build = strings.TrimSpace(vs.Env.Getenv("GITHUB_RUN_NUMBER")); build == "" </span><span class="cov8" title="1">{
-                        build = vs.Git.GetBuild(repo)
+                        build, err = vs.Git.GetBuild(repo)
                 }</span>
         }
         <span class="cov8" title="1">return</span>
@@ -397,9 +474,12 @@ func (vs *GitSemVer) GetBuild(repo string) (build string) <span class="cov8" tit
 // GetVersion returns a VersionInfo for the source code in the Git repository.
 func (vs *GitSemVer) GetVersion(repo string) (vi VersionInfo, err error) <span class="cov8" title="1">{
         if repo, err = vs.Git.CheckGitRepo(repo); err == nil </span><span class="cov8" title="1">{
-                if vi.Tag, vi.SameTree = vs.GetTag(repo); vi.Tag != "" </span><span class="cov8" title="1">{
-                        vi.Build = vs.GetBuild(repo)
-                        vi.Branch = vs.GetBranch(repo)
+                if vi.Tag, vi.SameTree, err = vs.GetTag(repo); vi.Tag != "" &amp;&amp; err == nil </span><span class="cov8" title="1">{
+                        var e error
+                        vi.Build, e = vs.GetBuild(repo)
+                        err = errors.Join(err, e)
+                        vi.Branch, e = vs.GetBranch(repo)
+                        err = errors.Join(err, e)
                         vi.IsRelease = vs.IsReleaseBranch(vi.Branch)
                         vi.Tags = vs.tags
                 }</span>
@@ -408,11 +488,11 @@ func (vs *GitSemVer) GetVersion(repo string) (vi VersionInfo, err error) <span c
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package gitsemver
+		<pre class="file" id="file4" style="display: none">package gitsemver
 
 import (
+        "bytes"
         "errors"
-        "fmt"
         "os"
         "os/exec"
         "path"
@@ -424,22 +504,23 @@ import (
 
 // Gitter is an interface exposing the required Git functionality
 type Gitter interface {
+        Exec(args ...string) (output []byte, err error)
         // CheckGitRepo checks that the given directory is part of a git repository.
         CheckGitRepo(dir string) (repo string, err error)
         // GetTags returns all tags, sorted by version descending.
-        GetTags(repo string) (tags []string)
+        GetTags(repo string) (tags []string, err error)
         // GetCurrentTreeHash returns the current tree hash.
-        GetCurrentTreeHash(repo string) string
+        GetCurrentTreeHash(repo string) (string, error)
         // GetHashes returns the commit and tree hashes for the given tag.
-        GetHashes(repo, tag string) (commit string, tree string)
+        GetHashes(repo, tag string) (commit string, tree string, err error)
         // GetClosestTag returns the closest semver tag for the given commit hash.
-        GetClosestTag(repo, commit string) (tag string)
+        GetClosestTag(repo, commit string) (tag string, err error)
         // GetBranch returns the current branch in the repository or an empty string.
-        GetBranch(repo string) string
+        GetBranch(repo string) (branch string, err error)
         // GetBranchesFromTag returns the non-HEAD branches in the repository that have the tag, otherwise an empty string.
-        GetBranchesFromTag(repo, tag string) []string
+        GetBranchesFromTag(repo, tag string) (branches []string, err error)
         // GetBuild returns the number of commits in the currently checked out branch as a string, or an empty string
-        GetBuild(repo string) string
+        GetBuild(repo string) (string, error)
         // FetchTags calls "git fetch --tags"
         FetchTags(repo string) error
         // CreateTag creates a new lightweight tag. Does nothing if tag is empty.
@@ -449,21 +530,24 @@ type Gitter interface {
         // PushTag pushes the given tag to the origin. Does nothing if tag is empty.
         PushTag(repo, tag string) (err error)
         // CleanStatus returns true if there are no uncommitted changes in the repo
-        CleanStatus(repo string) bool
+        CleanStatus(repo string) (yes bool, err error)
 }
 
 type DefaultGitter string
 
-func (dg DefaultGitter) execKeepError(args ...string) (err error) <span class="cov8" title="1">{
-        var b []byte
-        b, err = exec.Command(string(dg), args...).CombinedOutput() /* #nosec G204 */
+func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) <span class="cov8" title="1">{
+        var sout, serr bytes.Buffer
+        cmd := exec.Command(string(dg), args...) /* #nosec G204 */
+        cmd.Stdout = &amp;sout
+        cmd.Stderr = &amp;serr
+        err = cmd.Run()
+        output = bytes.TrimSpace(sout.Bytes())
+        stderr := bytes.TrimSpace(serr.Bytes())
         if err != nil </span><span class="cov8" title="1">{
-                errText := err.Error()
-                if s := strings.TrimSpace(string(b)); s != "" </span><span class="cov8" title="1">{
-                        errText = s
-                }</span>
-                <span class="cov8" title="1">err = fmt.Errorf("%s %s: %q", string(dg), strings.Join(args, " "), errText)</span>
-        }
+                err = NewErrGitExec(string(dg), args, err, string(stderr))
+        }</span> else<span class="cov8" title="1"> {
+                output = append(output, stderr...)
+        }</span>
         <span class="cov8" title="1">return</span>
 }
 
@@ -516,8 +600,9 @@ var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
 
 // GetTags returns all tags, sorted by version descending.
 // The latest tag is the first in the list.
-func (dg DefaultGitter) GetTags(repo string) (tags []string) <span class="cov8" title="1">{
-        if b, _ := exec.Command(string(dg), "-C", repo, "tag", "--sort=-v:refname").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) <span class="cov8" title="1">{
+        var b []byte
+        if b, err = dg.Exec("-C", repo, "tag", "--sort=-v:refname"); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
                 for _, tag := range strings.Split(string(b), "\n") </span><span class="cov8" title="1">{
                         if tag = strings.TrimSpace(tag); len(tag) &gt; 1 </span><span class="cov8" title="1">{
                                 if reMatchSemver.MatchString(tag) </span><span class="cov8" title="1">{
@@ -530,38 +615,41 @@ func (dg DefaultGitter) GetTags(repo string) (tags []string) <span class="cov8" 
 }
 
 // GetCurrentTreeHash returns the current tree hash.
-func (dg DefaultGitter) GetCurrentTreeHash(repo string) string <span class="cov8" title="1">{
-        if b, _ := exec.Command(string(dg), "-C", repo, "write-tree").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
-                return strings.TrimSpace(string(b))
+func (dg DefaultGitter) GetCurrentTreeHash(repo string) (hash string, err error) <span class="cov8" title="1">{
+        var b []byte
+        if b, err = dg.Exec("-C", repo, "write-tree"); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                hash = string(b)
         }</span>
-        <span class="cov8" title="1">return ""</span>
+        <span class="cov8" title="1">return</span>
 }
 
 // GetHashes returns the commit and tree hashes for the given tag.
-func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string) <span class="cov8" title="1">{
-        if b, _ := exec.Command(string(dg), "-C", repo, "rev-parse", tag, tag+"^{tree}").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string, err error) <span class="cov8" title="1">{
+        var b []byte
+        if b, err = dg.Exec("-C", repo, "rev-parse", tag, tag+"^{tree}"); err == nil &amp;&amp; len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
                 hashes := strings.Split(strings.TrimSpace(string(b)), "\n")
                 if len(hashes) == 2 </span><span class="cov8" title="1">{
-                        return hashes[0], hashes[1]
+                        commit, tree = hashes[0], hashes[1]
                 }</span>
         }
         <span class="cov8" title="1">return</span>
 }
 
 // GetClosestTag returns the closest semver tag for the given commit hash.
-func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string) <span class="cov8" title="1">{
-        _ = exec.Command(string(dg), "-C", repo, "fetch", "--unshallow", "--tags").Run() //#nosec G204
+func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string, err error) <span class="cov8" title="1">{
+        _, _ = dg.Exec("-C", repo, "fetch", "--unshallow", "--tags") // ignore "unshallow on a complete repository does not make sense"
+        var b []byte
         if commit == "HEAD" </span><span class="cov8" title="1">{
-                if b, _ := exec.Command(string(dg), "-C", repo, "rev-list", "--tags", "--max-count=1").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
-                        if tag = dg.GetClosestTag(repo, strings.TrimSpace(string(b))); tag != "" </span><span class="cov8" title="1">{
+                if b, err = dg.Exec("-C", repo, "rev-list", "--tags", "--max-count=1"); err == nil &amp;&amp; len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                        if tag, err = dg.GetClosestTag(repo, strings.TrimSpace(string(b))); tag != "" </span><span class="cov8" title="1">{
                                 return
                         }</span>
                 }
         }
-        <span class="cov8" title="1">if b, _ := exec.Command(string(dg), "-C", repo, "describe", "--tags", "--match=v[0-9]*", "--match=[0-9]*", "--abbrev=0", commit).Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
-                return strings.TrimSpace(string(b))
+        <span class="cov8" title="1">if b, err = dg.Exec("-C", repo, "describe", "--tags", "--match=v[0-9]*", "--match=[0-9]*", "--abbrev=0", commit); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+                tag = strings.TrimSpace(string(b))
         }</span>
-        <span class="cov8" title="1">return ""</span>
+        <span class="cov8" title="1">return</span>
 }
 
 func LastName(s string) string <span class="cov8" title="1">{
@@ -571,10 +659,11 @@ func LastName(s string) string <span class="cov8" title="1">{
         <span class="cov8" title="1">return s</span>
 }
 
-func (dg DefaultGitter) GetBranchesFromTag(repo, tag string) (branches []string) <span class="cov8" title="1">{
+func (dg DefaultGitter) GetBranchesFromTag(repo, tag string) (branches []string, err error) <span class="cov8" title="1">{
         tag = strings.TrimPrefix(tag, "refs/")
         tag = strings.TrimPrefix(tag, "tags/")
-        if b, _ := exec.Command(string(dg), "-C", repo, "branch", "--all", "--no-color", "--contains", "tags/"+tag).Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+        var b []byte
+        if b, err = dg.Exec("-C", repo, "branch", "--all", "--no-color", "--contains", "tags/"+tag); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
                 for _, s := range strings.Split(string(b), "\n") </span><span class="cov8" title="1">{
                         if s = strings.TrimSpace(s); len(s) &gt; 1 </span><span class="cov8" title="1">{
                                 if !strings.Contains(s, "HEAD") </span><span class="cov8" title="1">{
@@ -594,21 +683,24 @@ func (dg DefaultGitter) GetBranchesFromTag(repo, tag string) (branches []string)
         <span class="cov8" title="1">return</span>
 }
 
-func (dg DefaultGitter) GetBranch(repo string) (branch string) <span class="cov8" title="1">{
-        if b, _ := exec.Command(string(dg), "-C", repo, "branch", "--show-current").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+func (dg DefaultGitter) GetBranch(repo string) (branch string, err error) <span class="cov8" title="1">{
+        var b []byte
+        if b, err = dg.Exec("-C", repo, "branch", "--show-current"); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
                 branch = strings.TrimSpace(string(b))
         }</span>
         <span class="cov8" title="1">return</span>
 }
 
-func (dg DefaultGitter) GetBuild(repo string) string <span class="cov8" title="1">{
-        if b, _ := exec.Command(string(dg), "-C", repo, "rev-list", "HEAD", "--count").Output(); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
+func (dg DefaultGitter) GetBuild(repo string) (buildnum string, err error) <span class="cov8" title="1">{
+        var b []byte
+        if b, err = dg.Exec("-C", repo, "rev-list", "HEAD", "--count"); err == nil &amp;&amp; len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
                 str := strings.TrimSpace(string(b))
-                if num, err := strconv.Atoi(str); err == nil &amp;&amp; num &gt; 0 </span><span class="cov8" title="1">{
-                        return str
+                var num int
+                if num, err = strconv.Atoi(str); err == nil &amp;&amp; num &gt; 0 </span><span class="cov8" title="1">{
+                        buildnum = str
                 }</span>
         }
-        <span class="cov8" title="1">return ""</span>
+        <span class="cov8" title="1">return</span>
 }
 
 func (dg DefaultGitter) FetchTags(repo string) (err error) <span class="cov8" title="1">{
@@ -618,32 +710,35 @@ func (dg DefaultGitter) FetchTags(repo string) (err error) <span class="cov8" ti
 
 func (dg DefaultGitter) CreateTag(repo, tag string) (err error) <span class="cov8" title="1">{
         if tag != "" </span><span class="cov8" title="1">{
-                err = dg.execKeepError("-C", repo, "tag", tag)
+                _, err = dg.Exec("-C", repo, "tag", tag)
         }</span>
         <span class="cov8" title="1">return</span>
 }
 
 func (dg DefaultGitter) DeleteTag(repo, tag string) (err error) <span class="cov8" title="1">{
         if tag != "" </span><span class="cov8" title="1">{
-                err = dg.execKeepError("-C", repo, "tag", "-d", tag)
+                _, err = dg.Exec("-C", repo, "tag", "-d", tag)
         }</span>
         <span class="cov8" title="1">return</span>
 }
 
 func (dg DefaultGitter) PushTag(repo, tag string) (err error) <span class="cov8" title="1">{
         if tag != "" </span><span class="cov8" title="1">{
-                err = dg.execKeepError("-C", repo, "push", "origin", tag)
+                _, err = dg.Exec("-C", repo, "push", "origin", tag)
         }</span>
         <span class="cov8" title="1">return</span>
 }
 
-func (dg DefaultGitter) CleanStatus(repo string) bool <span class="cov8" title="1">{
-        b, _ := exec.Command(string(dg), "-C", repo, "status", "--untracked-files=no", "--porcelain").Output() /* #nosec G204 */
-        return len(strings.TrimSpace(string(b))) == 0
-}</span>
+func (dg DefaultGitter) CleanStatus(repo string) (yes bool, err error) <span class="cov8" title="1">{
+        var b []byte
+        if b, err = dg.Exec("-C", repo, "status", "--untracked-files=no", "--porcelain"); err == nil </span><span class="cov8" title="1">{
+                yes = len(b) == 0
+        }</span>
+        <span class="cov8" title="1">return</span>
+}
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">package gitsemver
+		<pre class="file" id="file5" style="display: none">package gitsemver
 
 import (
         "fmt"
