@@ -242,7 +242,7 @@ func (dg DefaultGitter) GetBuild(repo string) (buildnum string, err error) {
 }
 
 func (dg DefaultGitter) FetchTags(repo string) (err error) {
-	err = exec.Command(dg.Git, "-C", repo, "fetch", "--tags").Run() /* #nosec G204 */
+	_, err = dg.Exec("-C", repo, "fetch", "--tags") /* #nosec G204 */
 	return
 }
 
