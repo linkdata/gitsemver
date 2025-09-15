@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"syscall"
@@ -42,11 +43,13 @@ func mainfn() int {
 		repoDir = "."
 	}
 
-	vs, err := gitsemver.New(*flagGit)
+	var debugOut io.Writer
+	if *flagDebug {
+		debugOut = os.Stderr
+	}
+
+	vs, err := gitsemver.New(*flagGit, debugOut)
 	if err == nil {
-		if *flagDebug {
-			vs.DebugOut = os.Stderr
-		}
 		var createTag string
 		if repoDir, err = vs.Git.CheckGitRepo(repoDir); err == nil {
 			if !*flagNoFetch {

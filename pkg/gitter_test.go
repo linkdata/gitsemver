@@ -1,6 +1,7 @@
 package gitsemver_test
 
 import (
+	"bytes"
 	"os"
 	"slices"
 	"testing"
@@ -9,7 +10,7 @@ import (
 )
 
 func Test_NewDefaultGitter_SucceedsNormally(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -19,7 +20,7 @@ func Test_NewDefaultGitter_SucceedsNormally(t *testing.T) {
 }
 
 func Test_CheckGitRepo_SucceedsForCurrent(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -33,7 +34,7 @@ func Test_CheckGitRepo_SucceedsForCurrent(t *testing.T) {
 }
 
 func Test_CheckGitRepo_SucceedsForSubdir(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -47,7 +48,7 @@ func Test_CheckGitRepo_SucceedsForSubdir(t *testing.T) {
 }
 
 func Test_CheckGitRepo_FailsForRoot(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -66,7 +67,7 @@ func Test_CheckGitRepo_IgnoresFileNamedGit(t *testing.T) {
 		if f, err := os.Create(fileNamedGit); err == nil {
 			defer f.Close()
 			defer os.Remove(fileNamedGit)
-			dg, err := gitsemver.NewDefaultGitter("git")
+			dg, err := gitsemver.NewDefaultGitter("git", nil)
 			if err != nil {
 				t.Error(err)
 			}
@@ -84,7 +85,7 @@ func Test_CheckGitRepo_IgnoresFileNamedGit(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetBranch(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -106,7 +107,7 @@ func Test_LastName(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetTags(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -123,7 +124,7 @@ func Test_DefaultGitter_GetTags(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetCurrentTreeHash(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -140,7 +141,7 @@ func Test_DefaultGitter_GetCurrentTreeHash(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetTreeHash(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -153,7 +154,7 @@ func Test_DefaultGitter_GetTreeHash(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetClosestTag(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -177,7 +178,7 @@ func Test_DefaultGitter_GetClosestTag(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetBranchFromTag(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -190,7 +191,7 @@ func Test_DefaultGitter_GetBranchFromTag(t *testing.T) {
 }
 
 func Test_DefaultGitter_GetBuild(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -203,7 +204,7 @@ func Test_DefaultGitter_GetBuild(t *testing.T) {
 }
 
 func Test_DefaultGitter_FetchTags(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -211,7 +212,7 @@ func Test_DefaultGitter_FetchTags(t *testing.T) {
 }
 
 func Test_DefaultGitter_CreateDeleteTag(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -226,7 +227,8 @@ func Test_DefaultGitter_CreateDeleteTag(t *testing.T) {
 }
 
 func Test_DefaultGitter_PushTag(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	var buf bytes.Buffer
+	dg, err := gitsemver.NewDefaultGitter("git", &buf)
 	if err != nil {
 		t.Error(err)
 	}
@@ -239,11 +241,15 @@ func Test_DefaultGitter_PushTag(t *testing.T) {
 		t.Error("no error")
 	} else {
 		t.Log(err)
+		if buf.Len() == 0 {
+			t.Error("no log?")
+		}
 	}
 }
 
 func Test_DefaultGitter_CleanStatus(t *testing.T) {
-	dg, err := gitsemver.NewDefaultGitter("git")
+	var buf bytes.Buffer
+	dg, err := gitsemver.NewDefaultGitter("git", &buf)
 	if err != nil {
 		t.Error(err)
 	}
@@ -255,5 +261,8 @@ func Test_DefaultGitter_CleanStatus(t *testing.T) {
 		t.Log("git status reports uncommitted changes")
 	} else {
 		t.Log("git status reports clean")
+	}
+	if buf.Len() == 0 {
+		t.Error("no log?")
 	}
 }

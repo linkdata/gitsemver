@@ -3,6 +3,8 @@ package gitsemver
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -43,27 +45,37 @@ type Gitter interface {
 	CleanStatus(repo string) (yes bool, err error)
 }
 
-type DefaultGitter string
+type DefaultGitter struct {
+	Git      string
+	DebugOut io.Writer
+}
 
 func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) {
 	var sout, serr bytes.Buffer
-	cmd := exec.Command(string(dg), args...) /* #nosec G204 */
+	cmd := exec.Command(dg.Git, args...) /* #nosec G204 */
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
 	err = cmd.Run()
 	output = bytes.TrimSpace(sout.Bytes())
 	stderr := bytes.TrimSpace(serr.Bytes())
 	if err != nil {
-		err = NewErrGitExec(string(dg), args, err, string(stderr))
+		err = NewErrGitExec(dg.Git, args, err, string(stderr))
 	} else {
 		output = append(output, stderr...)
+	}
+	if dg.DebugOut != nil {
+		result := "OK"
+		if err != nil {
+			result = err.Error()
+		}
+		fmt.Fprintf(dg.DebugOut, "%q => (%v+%v) %v\n", strings.Join(cmd.Args, " "), len(output), len(stderr), result)
 	}
 	return
 }
 
-func NewDefaultGitter(gitBin string) (gitter Gitter, err error) {
+func NewDefaultGitter(gitBin string, debugOut io.Writer) (gitter Gitter, err error) {
 	if gitBin, err = exec.LookPath(gitBin); err == nil {
-		gitter = DefaultGitter(gitBin)
+		gitter = DefaultGitter{Git: gitBin, DebugOut: debugOut}
 	}
 	return
 }
@@ -214,7 +226,7 @@ func (dg DefaultGitter) GetBuild(repo string) (buildnum string, err error) {
 }
 
 func (dg DefaultGitter) FetchTags(repo string) (err error) {
-	err = exec.Command(string(dg), "-C", repo, "fetch", "--tags").Run() /* #nosec G204 */
+	err = exec.Command(dg.Git, "-C", repo, "fetch", "--tags").Run() /* #nosec G204 */
 	return
 }
 

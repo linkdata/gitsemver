@@ -8,7 +8,7 @@ import (
 )
 
 func Test_NewVersionStringer_SucceedsNormally(t *testing.T) {
-	vs, err := gitsemver.New("git")
+	vs, err := gitsemver.New("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -18,7 +18,7 @@ func Test_NewVersionStringer_SucceedsNormally(t *testing.T) {
 }
 
 func Test_NewVersionStringer_FailsWithBadBinary(t *testing.T) {
-	vs, err := gitsemver.New("./versionstringer.go")
+	vs, err := gitsemver.New("./versionstringer.go", nil)
 	if err == nil {
 		t.Error("no error")
 	}
@@ -307,7 +307,7 @@ func Test_VersionStringer_GetVersionDetachedHEAD(t *testing.T) {
 }
 
 func TestGitSemVer_Debug(t *testing.T) {
-	vs, err := gitsemver.New("git")
+	vs, err := gitsemver.New("git", nil)
 	if err != nil {
 		t.Error(err)
 	}

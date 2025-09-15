@@ -18,12 +18,13 @@ type GitSemVer struct {
 
 // New returns a GitSemVer ready to examine
 // the git repositories using the given Git binary.
-func New(gitBin string) (vs *GitSemVer, err error) {
+func New(gitBin string, debugOut io.Writer) (vs *GitSemVer, err error) {
 	var git Gitter
-	if git, err = NewDefaultGitter(gitBin); err == nil {
+	if git, err = NewDefaultGitter(gitBin, debugOut); err == nil {
 		vs = &GitSemVer{
-			Git: git,
-			Env: OsEnvironment{},
+			Git:      git,
+			Env:      OsEnvironment{},
+			DebugOut: debugOut,
 		}
 	}
 	return
