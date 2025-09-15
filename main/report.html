@@ -544,12 +544,32 @@ type DefaultGitter struct {
         DebugOut io.Writer
 }
 
+func MaybeSync(w io.Writer) <span class="cov8" title="1">{
+        if syncer, ok := w.(interface{ Sync() error }); ok </span><span class="cov8" title="1">{
+                _ = syncer.Sync()
+        }</span>
+}
+
 func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) <span class="cov8" title="1">{
         var sout, serr bytes.Buffer
         cmd := exec.Command(dg.Git, args...) /* #nosec G204 */
         cmd.Stdout = &amp;sout
         cmd.Stderr = &amp;serr
-        err = cmd.Run()
+        if dg.DebugOut != nil </span><span class="cov8" title="1">{
+                fmt.Fprintf(dg.DebugOut, "%q =&gt;", strings.Join(cmd.Args, " "))
+                MaybeSync(dg.DebugOut)
+                defer func(w io.Writer) </span><span class="cov8" title="1">{
+                        result := "OK"
+                        if err != nil </span><span class="cov8" title="1">{
+                                result = err.Error()
+                        }</span> else<span class="cov8" title="1"> if serr.Len() &gt; 0 </span><span class="cov8" title="1">{
+                                result = serr.String()
+                        }</span>
+                        <span class="cov8" title="1">fmt.Fprintf(w, " (%v+%v) %v\n", sout.Len(), serr.Len(), result)
+                        MaybeSync(w)</span>
+                }(dg.DebugOut)
+        }
+        <span class="cov8" title="1">err = cmd.Run()
         output = bytes.TrimSpace(sout.Bytes())
         stderr := bytes.TrimSpace(serr.Bytes())
         if err != nil </span><span class="cov8" title="1">{
@@ -557,13 +577,6 @@ func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) <span cl
         }</span> else<span class="cov8" title="1"> {
                 output = append(output, stderr...)
         }</span>
-        <span class="cov8" title="1">if dg.DebugOut != nil </span><span class="cov8" title="1">{
-                result := "OK"
-                if err != nil </span><span class="cov8" title="1">{
-                        result = err.Error()
-                }</span>
-                <span class="cov8" title="1">fmt.Fprintf(dg.DebugOut, "%q =&gt; (%v+%v) %v\n", strings.Join(cmd.Args, " "), len(output), len(stderr), result)</span>
-        }
         <span class="cov8" title="1">return</span>
 }
 
