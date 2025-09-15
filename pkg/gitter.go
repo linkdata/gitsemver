@@ -50,11 +50,31 @@ type DefaultGitter struct {
 	DebugOut io.Writer
 }
 
+func MaybeSync(w io.Writer) {
+	if syncer, ok := w.(interface{ Sync() error }); ok {
+		_ = syncer.Sync()
+	}
+}
+
 func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) {
 	var sout, serr bytes.Buffer
 	cmd := exec.Command(dg.Git, args...) /* #nosec G204 */
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
+	if dg.DebugOut != nil {
+		fmt.Fprintf(dg.DebugOut, "%q =>", strings.Join(cmd.Args, " "))
+		MaybeSync(dg.DebugOut)
+		defer func(w io.Writer) {
+			result := "OK"
+			if err != nil {
+				result = err.Error()
+			} else if serr.Len() > 0 {
+				result = serr.String()
+			}
+			fmt.Fprintf(w, " (%v+%v) %v\n", sout.Len(), serr.Len(), result)
+			MaybeSync(w)
+		}(dg.DebugOut)
+	}
 	err = cmd.Run()
 	output = bytes.TrimSpace(sout.Bytes())
 	stderr := bytes.TrimSpace(serr.Bytes())
@@ -62,13 +82,6 @@ func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) {
 		err = NewErrGitExec(dg.Git, args, err, string(stderr))
 	} else {
 		output = append(output, stderr...)
-	}
-	if dg.DebugOut != nil {
-		result := "OK"
-		if err != nil {
-			result = err.Error()
-		}
-		fmt.Fprintf(dg.DebugOut, "%q => (%v+%v) %v\n", strings.Join(cmd.Args, " "), len(output), len(stderr), result)
 	}
 	return
 }

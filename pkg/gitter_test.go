@@ -203,6 +203,13 @@ func Test_DefaultGitter_GetBuild(t *testing.T) {
 	}
 }
 
+func Test_maybeSync(t *testing.T) {
+	if f, err := os.CreateTemp("", ""); err == nil {
+		defer os.Remove(f.Name())
+		gitsemver.MaybeSync(f)
+	}
+}
+
 func Test_DefaultGitter_FetchTags(t *testing.T) {
 	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
