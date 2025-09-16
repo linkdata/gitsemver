@@ -218,7 +218,8 @@ func (OsEnvironment) LookupEnv(key string) (string, bool) <span class="cov8" tit
 		<pre class="file" id="file2" style="display: none">package gitsemver
 
 import (
-        "strconv"
+        "fmt"
+        "strings"
 )
 
 type errGitExec struct {
@@ -240,21 +241,15 @@ func NewErrGitExec(git string, args []string, err error, stderr string) error <s
 }</span>
 
 func (err *errGitExec) Error() string <span class="cov8" title="1">{
-        var b []byte
-        if err.git != "" </span><span class="cov8" title="1">{
-                b = append(b, err.git...)
-                for _, arg := range err.args </span><span class="cov8" title="1">{
-                        b = append(b, ' ')
-                        b = strconv.AppendQuote(b, arg)
-                }</span>
-                <span class="cov8" title="1">b = append(b, ": "...)</span>
-        }
-        <span class="cov8" title="1">if len(err.stderr) &gt; 0 </span><span class="cov8" title="1">{
-                b = append(b, err.stderr...)
-        }</span> else<span class="cov8" title="1"> if err.err != nil </span><span class="cov8" title="1">{
-                b = append(b, err.err.Error()...)
+        var sb strings.Builder
+        fmt.Fprintf(&amp;sb, "%q:", strings.Join(append([]string{err.git}, err.args...), " "))
+        if err.err != nil </span><span class="cov8" title="1">{
+                fmt.Fprintf(&amp;sb, " %v", err.err)
         }</span>
-        <span class="cov8" title="1">return string(b)</span>
+        <span class="cov8" title="1">if len(err.stderr) &gt; 0 </span><span class="cov8" title="1">{
+                fmt.Fprintf(&amp;sb, " %q", err.stderr)
+        }</span>
+        <span class="cov8" title="1">return sb.String()</span>
 }
 
 func (err *errGitExec) Is(other error) bool <span class="cov8" title="1">{
@@ -567,10 +562,14 @@ func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) <span cl
                 MaybeSync(dg.DebugOut)
                 defer func(w io.Writer) </span><span class="cov8" title="1">{
                         result := "OK"
-                        if err != nil </span><span class="cov8" title="1">{
+                        for errors.Unwrap(err) != nil </span><span class="cov8" title="1">{
+                                err = errors.Unwrap(err)
+                        }</span>
+                        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
                                 result = err.Error()
-                        }</span> else<span class="cov8" title="1"> if serr.Len() &gt; 0 </span><span class="cov8" title="1">{
-                                result = serr.String()
+                        }</span>
+                        <span class="cov8" title="1">if serr.Len() &gt; 0 </span><span class="cov8" title="1">{
+                                result += fmt.Sprintf(" %q", serr.String())
                         }</span>
                         <span class="cov8" title="1">fmt.Fprintf(w, " (%v+%v) %v\n", sout.Len(), serr.Len(), result)
                         MaybeSync(w)</span>
