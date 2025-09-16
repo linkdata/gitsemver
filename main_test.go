@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+func init() {
+	testMode = true
+}
+
 func TestMainFn(t *testing.T) {
 	flag.Parse()
 	*flagGoPackage = true
@@ -28,6 +32,7 @@ func TestMainFnBranch(t *testing.T) {
 	flag.Parse()
 	*flagBranch = true
 	*flagOut = "test.out"
+	*flagIncPatch = true
 	mainfn()
 	b, err := os.ReadFile("test.out")
 	if err == nil {
@@ -53,6 +58,5 @@ func TestMainError(t *testing.T) {
 	flag.Parse()
 	*flagOut = "/proc/.nonexistant"
 	*flagDebug = true
-	*flagIncPatch = true
 	main()
 }

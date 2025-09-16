@@ -37,6 +37,9 @@ var (
 	flagBranch    = flag.Bool("branch", false, "print the current branch name")
 )
 
+var exitFn func(int) = os.Exit
+var testMode bool
+
 func mainfn() int {
 	repoDir := os.ExpandEnv(flag.Arg(0))
 	if repoDir == "" {
@@ -60,6 +63,9 @@ func mainfn() int {
 				if vi, err = vs.GetVersion(repoDir); err == nil {
 					if *flagIncPatch {
 						createTag = vi.IncPatch()
+						if testMode {
+							createTag = ""
+						}
 					}
 					content := vi.Version()
 					if *flagBranch {
@@ -99,8 +105,6 @@ func mainfn() int {
 	}
 	return retv
 }
-
-var exitFn func(int) = os.Exit
 
 func main() {
 	flag.Parse()
