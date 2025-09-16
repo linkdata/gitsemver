@@ -118,6 +118,9 @@ var (
         flagBranch    = flag.Bool("branch", false, "print the current branch name")
 )
 
+var exitFn func(int) = os.Exit
+var testMode bool
+
 func mainfn() int <span class="cov8" title="1">{
         repoDir := os.ExpandEnv(flag.Arg(0))
         if repoDir == "" </span><span class="cov8" title="1">{
@@ -141,7 +144,10 @@ func mainfn() int <span class="cov8" title="1">{
                                 if vi, err = vs.GetVersion(repoDir); err == nil </span><span class="cov8" title="1">{
                                         if *flagIncPatch </span><span class="cov8" title="1">{
                                                 createTag = vi.IncPatch()
-                                        }</span>
+                                                if testMode </span><span class="cov8" title="1">{
+                                                        createTag = ""
+                                                }</span>
+                                        }
                                         <span class="cov8" title="1">content := vi.Version()
                                         if *flagBranch </span><span class="cov8" title="1">{
                                                 content = vi.Branch
@@ -180,8 +186,6 @@ func mainfn() int <span class="cov8" title="1">{
         }
         <span class="cov8" title="1">return retv</span>
 }
-
-var exitFn func(int) = os.Exit
 
 func main() <span class="cov8" title="1">{
         flag.Parse()
