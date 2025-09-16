@@ -1,7 +1,8 @@
 package gitsemver
 
 import (
-	"strconv"
+	"fmt"
+	"strings"
 )
 
 type errGitExec struct {
@@ -23,21 +24,15 @@ func NewErrGitExec(git string, args []string, err error, stderr string) error {
 }
 
 func (err *errGitExec) Error() string {
-	var b []byte
-	if err.git != "" {
-		b = append(b, err.git...)
-		for _, arg := range err.args {
-			b = append(b, ' ')
-			b = strconv.AppendQuote(b, arg)
-		}
-		b = append(b, ": "...)
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%q:", strings.Join(append([]string{err.git}, err.args...), " "))
+	if err.err != nil {
+		fmt.Fprintf(&sb, " %v", err.err)
 	}
 	if len(err.stderr) > 0 {
-		b = append(b, err.stderr...)
-	} else if err.err != nil {
-		b = append(b, err.err.Error()...)
+		fmt.Fprintf(&sb, " %q", err.stderr)
 	}
-	return string(b)
+	return sb.String()
 }
 
 func (err *errGitExec) Is(other error) bool {

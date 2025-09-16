@@ -16,20 +16,12 @@ func Test_errGitExec_Error(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "nil",
-			git:    "",
-			args:   nil,
-			err:    nil,
-			stderr: "",
-			want:   "",
-		},
-		{
 			name:   "os.ErrNotExist",
 			git:    "_nope_",
-			args:   nil,
+			args:   []string{"a"},
 			err:    os.ErrNotExist,
-			stderr: "",
-			want:   "_nope_: " + os.ErrNotExist.Error(),
+			stderr: "meh",
+			want:   "\"_nope_ a\": " + os.ErrNotExist.Error() + " \"meh\"",
 		},
 	}
 	for _, tt := range tests {

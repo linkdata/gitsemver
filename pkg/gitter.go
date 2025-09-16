@@ -69,10 +69,14 @@ func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) {
 		MaybeSync(dg.DebugOut)
 		defer func(w io.Writer) {
 			result := "OK"
+			for errors.Unwrap(err) != nil {
+				err = errors.Unwrap(err)
+			}
 			if err != nil {
 				result = err.Error()
-			} else if serr.Len() > 0 {
-				result = serr.String()
+			}
+			if serr.Len() > 0 {
+				result += fmt.Sprintf(" %q", serr.String())
 			}
 			fmt.Fprintf(w, " (%v+%v) %v\n", sout.Len(), serr.Len(), result)
 			MaybeSync(w)
