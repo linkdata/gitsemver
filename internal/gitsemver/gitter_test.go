@@ -345,6 +345,28 @@ func Test_DefaultGitter_GetBranchFromTag(t *testing.T) {
 	}
 }
 
+func Test_DefaultGitter_GetBranchFromTag_PreservesSlashInBranchName(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	runGit(t, repo, nil, "checkout", "-q", "-b", "rel/main")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	runGit(t, repo, nil, "tag", "v1.0.0")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	branches, err := dg.GetBranchesFromTag(repo, "refs/tags/v1.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Compare(branches, []string{"rel/main"}) != 0 {
+		t.Fatalf("unexpected branches: %v", branches)
+	}
+}
+
 func Test_DefaultGitter_GetBuild(t *testing.T) {
 	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {

@@ -242,16 +242,30 @@ func (dg DefaultGitter) GetBranchesFromTag(repo, tag string) (branches []string,
 	tag = strings.TrimPrefix(tag, "tags/")
 	var b []byte
 	if b, err = dg.Exec("-C", repo, "branch", "--all", "--no-color", "--contains", "tags/"+tag); len(b) > 0 /* #nosec G204 */ {
+		seen := map[string]struct{}{}
 		for _, s := range strings.Split(string(b), "\n") {
 			if s = strings.TrimSpace(s); len(s) > 1 {
 				if !strings.Contains(s, "HEAD") {
 					starred := s[0] == '*'
 					s = strings.TrimSpace(strings.TrimPrefix(s, "*"))
+					// Skip symbolic refs like "origin/HEAD -> origin/main".
 					if len(s) > 0 && !strings.Contains(s, " ") {
-						branches = append(branches, LastName(s))
-						if starred {
-							branches = branches[len(branches)-1:]
-							break
+						if strings.HasPrefix(s, "remotes/") {
+							// Normalize "remotes/<remote>/<branch>" into "<branch>".
+							s = strings.TrimPrefix(s, "remotes/")
+							if idx := strings.IndexByte(s, '/'); idx > -1 {
+								s = s[idx+1:]
+							}
+						}
+						if s != "" {
+							if _, ok := seen[s]; !ok {
+								seen[s] = struct{}{}
+								branches = append(branches, s)
+							}
+							if starred {
+								branches = branches[len(branches)-1:]
+								break
+							}
 						}
 					}
 				}
