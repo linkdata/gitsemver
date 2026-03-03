@@ -367,6 +367,38 @@ func Test_DefaultGitter_GetBranchFromTag_PreservesSlashInBranchName(t *testing.T
 	}
 }
 
+func Test_DefaultGitter_GetBranchFromTag_NormalizesRemoteBranchName(t *testing.T) {
+	base := t.TempDir()
+	origin := filepath.Join(base, "origin.git")
+	work1 := filepath.Join(base, "work1")
+	work2 := filepath.Join(base, "work2")
+
+	runGit(t, base, nil, "init", "--bare", "-q", origin)
+	runGit(t, base, nil, "clone", "-q", origin, work1)
+	runGit(t, work1, nil, "config", "user.email", "test@example.com")
+	runGit(t, work1, nil, "config", "user.name", "Test")
+	commitAt(t, work1, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	runGit(t, work1, nil, "push", "-q", "origin", "HEAD")
+	runGit(t, work1, nil, "checkout", "-q", "-b", "rel/main")
+	commitAt(t, work1, "a.txt", "a\nb\n", "c2", "2020-01-02T00:00:00Z")
+	runGit(t, work1, nil, "tag", "v1.0.0")
+	runGit(t, work1, nil, "push", "-q", "origin", "rel/main", "--tags")
+
+	runGit(t, base, nil, "clone", "-q", origin, work2)
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	branches, err := dg.GetBranchesFromTag(work2, "refs/tags/v1.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Compare(branches, []string{"rel/main"}) != 0 {
+		t.Fatalf("unexpected branches: %v", branches)
+	}
+}
+
 func Test_DefaultGitter_GetBuild(t *testing.T) {
 	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
@@ -450,6 +482,33 @@ func Test_DefaultGitter_PushTag(t *testing.T) {
 		if buf.Len() == 0 {
 			t.Error("no log?")
 		}
+	}
+}
+
+func Test_DefaultGitter_DeleteRemoteTag(t *testing.T) {
+	base := t.TempDir()
+	origin := filepath.Join(base, "origin.git")
+	work := filepath.Join(base, "work")
+
+	runGit(t, base, nil, "init", "--bare", "-q", origin)
+	runGit(t, base, nil, "clone", "-q", origin, work)
+	runGit(t, work, nil, "config", "user.email", "test@example.com")
+	runGit(t, work, nil, "config", "user.name", "Test")
+	commitAt(t, work, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	runGit(t, work, nil, "tag", "v1.0.0")
+	runGit(t, work, nil, "push", "-q", "origin", "HEAD", "--tags")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dg.DeleteRemoteTag(work, "v1.0.0"); err != nil {
+		t.Fatal(err)
+	}
+
+	remoteTags := runGit(t, work, nil, "ls-remote", "--tags", "origin")
+	if strings.Contains(remoteTags, "refs/tags/v1.0.0") {
+		t.Fatalf("unexpected remote tag after delete: %q", remoteTags)
 	}
 }
 
