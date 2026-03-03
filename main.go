@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -12,16 +14,60 @@ import (
 	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
 )
 
-func writeOutput(fileName, content string) (err error) {
-	f := os.Stdout
-	if len(fileName) > 0 {
-		fileName = filepath.Clean(fileName)
-		if f, err = os.Create(fileName); /* #nosec G703 */ err != nil /* #nosec G304 */ {
+func replaceFile(source, target string) (err error) {
+	bakname := fmt.Sprintf("%s.gitsemver-%x", target, rand.Uint64())                                       // #nosec G404
+	if renameerr := os.Rename(target, bakname); renameerr == nil || errors.Is(renameerr, fs.ErrNotExist) { // #nosec G703
+		if err = os.Rename(source, target); err == nil { // #nosec G703
+			if renameerr == nil {
+				err = os.Remove(bakname) // #nosec G703
+			}
 			return
 		}
-		defer f.Close()
+		if renameerr == nil {
+			_ = os.Rename(bakname, target)
+		}
+	} else {
+		err = renameerr
 	}
-	_, err = f.WriteString(content)
+	return
+}
+
+func prepareOutput(fileName, content string) (publish func() error, cleanup func(), err error) {
+	cleanup = func() {}
+	publish = func() error {
+		_, err := os.Stdout.WriteString(content)
+		return err
+	}
+	if fileName != "" {
+		fileName = filepath.Clean(fileName)
+		if fi, statErr := os.Stat(fileName); statErr == nil {
+			if fi.IsDir() {
+				err = fmt.Errorf("%q is a directory", fileName)
+				return
+			}
+		} else if !errors.Is(statErr, fs.ErrNotExist) {
+			err = statErr
+			return
+		}
+		// File output is always staged: write to temp first, then publish by replace.
+		var f *os.File
+		if f, err = os.CreateTemp(filepath.Dir(fileName), filepath.Base(fileName)+".gitsemver-*"); err == nil {
+			tempFile := f.Name()
+			cleanup = func() {
+				_ = os.Remove(tempFile) // #nosec G703
+			}
+			if _, err = f.WriteString(content); err == nil {
+				if err = f.Close(); err == nil {
+					publish = func() error {
+						return replaceFile(tempFile, fileName)
+					}
+					return
+				}
+			}
+			_ = f.Close()
+			cleanup()
+		}
+	}
 	return
 }
 
@@ -82,10 +128,15 @@ func mainfn() int {
 						if !*flagNoNewline {
 							content += "\n"
 						}
-						if err = vs.Git.CreateTag(repoDir, createTag); err == nil {
-							if err = writeOutput(outpath, content); err == nil {
+						var publish func() error
+						var cleanup func()
+						if publish, cleanup, err = prepareOutput(outpath, content); err == nil {
+							defer cleanup()
+							if err = vs.Git.CreateTag(repoDir, createTag); err == nil {
 								if err = vs.Git.PushTag(repoDir, createTag); err == nil {
-									return 0
+									if err = publish(); err == nil {
+										return 0
+									}
 								}
 							}
 						}
