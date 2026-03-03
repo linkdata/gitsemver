@@ -154,6 +154,8 @@ func (dg DefaultGitter) CheckGitRepo(dir string) (repo string, err error) {
 	return
 }
 
+// Intentionally accepts partial numeric tags (v1, v1.2, v1.2.3),
+// with or without a leading "v".
 var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
 
 // GetTags returns all tags, sorted by version descending.

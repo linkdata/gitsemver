@@ -5,7 +5,7 @@
 
 # gitsemver
 
-Build a [semver](https://semver.org/) compliant version string for a git repository.
+Build a SemVer-inspired version string for a git repository.
 
 Using tree hashes it returns the latest matching semver tag. If no tree hash
 match exactly, it falls back to the latest semver tag reachable from the
@@ -20,6 +20,11 @@ Supports raw git repositories as well as GitLab and GitHub builders.
 ### Scope and limitations
 
 `gitsemver` is a CLI-first tool, one process run per repository.
+
+Tag matching is intentionally relaxed: `vMAJOR`, `vMAJOR.MINOR`, and
+`vMAJOR.MINOR.PATCH` (and the same forms without `v`) are all accepted and
+preserved in output. If you require strict SemVer 2.0.0 output, use full
+`MAJOR.MINOR.PATCH` tags in Git.
 
 The implementation package is intentionally internal to this module and is not a
 supported external API.
