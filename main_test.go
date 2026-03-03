@@ -487,3 +487,77 @@ func TestMainFnIncPatchRollsBackRemoteTagOnPublishError(t *testing.T) {
 		t.Fatalf("unexpected remote tag v1.0.1: %q", remoteTags)
 	}
 }
+
+func TestMainFnNoFetchDoesNotRunAnyFetch(t *testing.T) {
+	flag.Parse()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	origGit, origOut, origName := *flagGit, *flagOut, *flagName
+	origDebug, origGoPackage := *flagDebug, *flagGoPackage
+	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
+	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origTestMode := testMode
+	defer func() {
+		*flagGit, *flagOut, *flagName = origGit, origOut, origName
+		*flagDebug, *flagGoPackage = origDebug, origGoPackage
+		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
+		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		testMode = origTestMode
+	}()
+
+	work := t.TempDir()
+	runGit(t, work, "init", "-q")
+	runGit(t, work, "config", "user.email", "test@example.com")
+	runGit(t, work, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(work, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "add", "a.txt")
+	runGit(t, work, "commit", "-q", "-m", "c1")
+	runGit(t, work, "tag", "v1.0.0")
+	if err := os.WriteFile(filepath.Join(work, "a.txt"), []byte("a\nb\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "commit", "-qam", "c2")
+
+	if err := os.Chdir(work); err != nil {
+		t.Fatal(err)
+	}
+
+	*flagGit = "git"
+	*flagOut = "out.txt"
+	*flagName = ""
+	*flagDebug = true
+	*flagGoPackage = false
+	*flagNoFetch = true
+	*flagNoNewline = false
+	*flagIncPatch = false
+	*flagBranch = false
+	testMode = true
+
+	origStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stderr = w
+	code := mainfn()
+	os.Stderr = origStderr
+	_ = w.Close()
+	logBytes, readErr := io.ReadAll(r)
+	_ = r.Close()
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if code != 0 {
+		t.Fatalf("mainfn failed with code %d, debug log:\n%s", code, string(logBytes))
+	}
+	logText := string(logBytes)
+	if strings.Contains(logText, " fetch --") {
+		t.Fatalf("unexpected git fetch while -nofetch is set:\n%s", logText)
+	}
+}

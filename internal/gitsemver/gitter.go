@@ -195,8 +195,6 @@ func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string, err er
 
 // GetClosestTag returns the closest semver tag for the given commit hash.
 func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string, err error) {
-	_, _ = dg.Exec("-C", repo, "fetch", "--unshallow", "--tags") // ignore "unshallow on a complete repository does not make sense"
-
 	var listed []byte
 	if listed, err = dg.Exec("-C", repo, "tag", "--merged", commit, "--list", "v[0-9]*", "[0-9]*"); err == nil {
 		candidates := map[string]struct{}{}
@@ -286,6 +284,9 @@ func (dg DefaultGitter) GetBuild(repo string) (buildnum string, err error) {
 }
 
 func (dg DefaultGitter) FetchTags(repo string) (err error) {
+	// If this is a shallow clone, attempt to unshallow as part of fetching tags.
+	// Ignore the expected error when the repository is already complete.
+	_, _ = dg.Exec("-C", repo, "fetch", "--unshallow", "--tags")
 	_, err = dg.Exec("-C", repo, "fetch", "--tags") /* #nosec G204 */
 	return
 }
