@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	gitsemver "github.com/linkdata/gitsemver/pkg"
+	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
 )
 
 func runGit(t *testing.T, repo string, env map[string]string, args ...string) string {
@@ -69,7 +69,7 @@ func Test_CheckGitRepo_SucceedsForSubdir(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	repo, err := dg.CheckGitRepo("../pkg/subdir")
+	repo, err := dg.CheckGitRepo("./subdir")
 	if err != nil {
 		t.Error(err)
 	}

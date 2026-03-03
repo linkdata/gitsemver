@@ -9,7 +9,7 @@ import (
 	"path"
 	"syscall"
 
-	gitsemver "github.com/linkdata/gitsemver/pkg"
+	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
 )
 
 func writeOutput(fileName, content string) (err error) {

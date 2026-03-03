@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	gitsemver "github.com/linkdata/gitsemver/pkg"
+	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
 )
 
 func Test_OsEnvironment_Getenv(t *testing.T) {

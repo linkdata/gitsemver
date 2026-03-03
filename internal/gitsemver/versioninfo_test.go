@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	gitsemver "github.com/linkdata/gitsemver/pkg"
+	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
 )
 
 func Test_VersionInfo_GoPackage(t *testing.T) {
 	vi := &gitsemver.VersionInfo{Tag: "v1.2.3", Branch: "mybranch", Build: "456"}
 
-	txt, err := vi.GoPackage("..", "")
+	txt, err := vi.GoPackage("../..", "")
 	if err != nil {
 		t.Error(err)
 	}
@@ -18,7 +18,7 @@ func Test_VersionInfo_GoPackage(t *testing.T) {
 		t.Error(txt)
 	}
 	t.Log(txt)
-	txt, err = vi.GoPackage("..", "123")
+	txt, err = vi.GoPackage("../..", "123")
 	if err == nil {
 		t.Error("no error")
 	}

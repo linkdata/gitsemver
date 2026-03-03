@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	gitsemver "github.com/linkdata/gitsemver/pkg"
+	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
 )
 
 func Test_NewVersionStringer_SucceedsNormally(t *testing.T) {
