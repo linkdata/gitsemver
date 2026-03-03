@@ -164,6 +164,18 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	git.branch = ""
 
 	git.branch = "detached"
+	env["GITHUB_HEAD_REF"] = "feature/foo"
+	env["GITHUB_BASE_REF"] = "main"
+	env["GITHUB_REF_NAME"] = "123/merge"
+	name, err = vs.GetBranch(".")
+	isEqual(t, err, nil)
+	isEqual(t, "feature/foo", name)
+	delete(env, "GITHUB_HEAD_REF")
+	delete(env, "GITHUB_BASE_REF")
+	delete(env, "GITHUB_REF_NAME")
+	git.branch = ""
+
+	git.branch = "detached"
 	env["GITHUB_REF_TYPE"] = "tag"
 	env["GITHUB_REF_NAME"] = "v1.0.0"
 	name, err = vs.GetBranch(".")
