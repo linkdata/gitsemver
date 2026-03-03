@@ -159,18 +159,49 @@ func (dg DefaultGitter) CheckGitRepo(dir string) (repo string, err error) {
 // with or without a leading "v".
 var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
 
-func semverKey(tag string) [3]int {
-	var key [3]int
+func normalizeNumericString(s string) string {
+	s = strings.TrimLeft(s, "0")
+	if s == "" {
+		return "0"
+	}
+	return s
+}
+
+func compareNumericStrings(a, b string) int {
+	a = normalizeNumericString(a)
+	b = normalizeNumericString(b)
+	if len(a) != len(b) {
+		if len(a) > len(b) {
+			return 1
+		}
+		return -1
+	}
+	if a == b {
+		return 0
+	}
+	if a > b {
+		return 1
+	}
+	return -1
+}
+
+func semverPart(tag string, index int) string {
 	core := strings.TrimPrefix(tag, "v")
 	parts := strings.Split(core, ".")
-	for i := 0; i < len(parts) && i < len(key); i++ {
-		n, err := strconv.Atoi(parts[i])
-		if err != nil {
-			break
-		}
-		key[i] = n
+	if index >= 0 && index < len(parts) {
+		return parts[index]
 	}
-	return key
+	return "0"
+}
+
+func semverGreater(leftTag, rightTag string) bool {
+	for idx := 0; idx < 3; idx++ {
+		cmp := compareNumericStrings(semverPart(leftTag, idx), semverPart(rightTag, idx))
+		if cmp != 0 {
+			return cmp > 0
+		}
+	}
+	return false
 }
 
 // GetTags returns all tags, sorted by version descending.
@@ -186,14 +217,7 @@ func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) {
 		// Git's multi-pattern listing can interleave v-prefixed and non-prefixed
 		// tags in a way that is not globally version-sorted. Normalize here.
 		sort.SliceStable(tags, func(i, j int) bool {
-			left := semverKey(tags[i])
-			right := semverKey(tags[j])
-			for idx := range left {
-				if left[idx] != right[idx] {
-					return left[idx] > right[idx]
-				}
-			}
-			return false
+			return semverGreater(tags[i], tags[j])
 		})
 	}
 	return
