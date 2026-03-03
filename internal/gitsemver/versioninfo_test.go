@@ -45,6 +45,22 @@ func Test_VersionInfo_GoPackage_ModuleWithInlineComment(t *testing.T) {
 	}
 }
 
+func Test_VersionInfo_GoPackage_RejectsKeywordAfterLowercasing(t *testing.T) {
+	repo := t.TempDir()
+	goMod := "module example.com/Type\n\ngo 1.25\n"
+	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte(goMod), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	vi := &gitsemver.VersionInfo{Tag: "v1.2.3", Branch: "mybranch", Build: "456"}
+	txt, err := vi.GoPackage(repo, "")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if txt != "" {
+		t.Fatalf("expected empty output, got %q", txt)
+	}
+}
+
 func Test_VersionInfo_IncPatch(t *testing.T) {
 	vi := &gitsemver.VersionInfo{Tag: "v1.2", Tags: []gitsemver.GitTag{{Tag: "v1.2"}}}
 	if !vi.HasTag("v1.2") {

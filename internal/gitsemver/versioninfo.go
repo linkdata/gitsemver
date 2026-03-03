@@ -66,6 +66,11 @@ const PkgVersion = %q
 func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) {
 	pkgName, err = findPackageName(repo, pkgName)
 	if err == nil {
+		packageName := strings.ToLower(pkgName)
+		if !token.IsIdentifier(packageName) {
+			err = fmt.Errorf("%q cannot be used as a Go package name after lowercasing", packageName)
+			return
+		}
 		generatedBy := ""
 		if executable, err := os.Executable(); err == nil {
 			generatedBy = " by " + filepath.Base(executable)
@@ -73,7 +78,7 @@ func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) 
 		retv = fmt.Sprintf(goPackageTemplate,
 			generatedBy, time.Now().UTC().Format(time.DateTime),
 			vi.Branch, vi.Build,
-			strings.ToLower(pkgName),
+			packageName,
 			pkgName,
 			vi.Version())
 	}
