@@ -119,6 +119,14 @@ func Test_VersionStringer_GetTag(t *testing.T) {
 	isEqual(t, "v3", tag)
 	isEqual(t, true, sametree)
 	isEqual(t, err, nil)
+	delete(env, "CI_COMMIT_TAG")
+
+	vs = gitsemver.GitSemVer{Git: git, Env: env}
+	env["CI_COMMIT_TAG"] = "1foo"
+	tag, sametree, err = vs.GetTag(".")
+	isEqual(t, "v6.0.0", tag)
+	isEqual(t, false, sametree)
+	isEqual(t, err, nil)
 }
 
 func Test_VersionStringer_GetBranch(t *testing.T) {

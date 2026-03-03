@@ -125,8 +125,10 @@ func (vs *GitSemVer) examineTags(repo string) (err error) {
 // the closest semver tag if none match exactly. It also returns a bool
 // that is true if the tree hashes match and there are no uncommitted changes.
 func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) {
-	if tag = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")); tag != "" {
-		return tag, true, nil
+	if ciTag := strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")); ciTag != "" {
+		if reMatchSemver.MatchString(ciTag) {
+			return ciTag, true, nil
+		}
 	}
 	tag = "v0.0.0"
 	if err = vs.examineTags(repo); err == nil {
