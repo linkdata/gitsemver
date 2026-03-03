@@ -578,6 +578,29 @@ func Test_DefaultGitter_CleanStatus(t *testing.T) {
 	}
 }
 
+func Test_DefaultGitter_CleanStatus_DetectsUntrackedFiles(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	if err := os.WriteFile(filepath.Join(repo, "untracked.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clean, err := dg.CleanStatus(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if clean {
+		t.Fatal("expected untracked file to make status dirty")
+	}
+}
+
 func Test_DefaultGitter_ExecPreservesErrGitExecInDebugMode(t *testing.T) {
 	var buf bytes.Buffer
 	dg, err := gitsemver.NewDefaultGitter("git", &buf)

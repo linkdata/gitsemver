@@ -386,7 +386,7 @@ func (dg DefaultGitter) DeleteRemoteTag(repo, tag string) (err error) {
 
 func (dg DefaultGitter) CleanStatus(repo string) (yes bool, err error) {
 	var b []byte
-	if b, err = dg.Exec("-C", repo, "status", "--untracked-files=no", "--porcelain"); err == nil {
+	if b, err = dg.Exec("-C", repo, "status", "--porcelain"); err == nil {
 		yes = len(b) == 0
 	}
 	return
