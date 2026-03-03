@@ -86,8 +86,14 @@ func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) 
 }
 
 func (vi *VersionInfo) HasTag(tag string) bool {
+	tagCore := strings.TrimPrefix(tag, "v")
+	tagIsSemver := reMatchSemver.MatchString(tag)
 	for _, gt := range vi.Tags {
 		if gt.Tag == tag {
+			return true
+		}
+		// Treat v-prefixed and non-prefixed semver tags as equivalent.
+		if tagIsSemver && reMatchSemver.MatchString(gt.Tag) && strings.TrimPrefix(gt.Tag, "v") == tagCore {
 			return true
 		}
 	}

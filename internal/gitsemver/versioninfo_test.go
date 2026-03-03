@@ -86,6 +86,30 @@ func Test_VersionInfo_IncPatch_PrereleaseTag(t *testing.T) {
 	}
 }
 
+func Test_VersionInfo_IncPatch_AvoidsEquivalentVPrefixCollision(t *testing.T) {
+	vi := &gitsemver.VersionInfo{
+		Tag: "1.2.0",
+		Tags: []gitsemver.GitTag{
+			{Tag: "v1.2.1"},
+		},
+	}
+	if got := vi.IncPatch(); got != "1.2.2" {
+		t.Fatalf("expected 1.2.2, got %q", got)
+	}
+}
+
+func Test_VersionInfo_IncPatch_AvoidsEquivalentNoPrefixCollision(t *testing.T) {
+	vi := &gitsemver.VersionInfo{
+		Tag: "v1.2.0",
+		Tags: []gitsemver.GitTag{
+			{Tag: "1.2.1"},
+		},
+	}
+	if got := vi.IncPatch(); got != "v1.2.2" {
+		t.Fatalf("expected v1.2.2, got %q", got)
+	}
+}
+
 func Test_VersionInfo_IncPatch_InvalidTagNoLoop(t *testing.T) {
 	vi := &gitsemver.VersionInfo{Tag: "not-a-semver-tag"}
 	if got := vi.IncPatch(); got != "not-a-semver-tag" {
