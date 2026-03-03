@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/linkdata/gitsemver/internal/gitsemver/gitsemver.go (100.0%)</option>
 				
-				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (95.9%)</option>
+				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (100.0%)</option>
 				
 				<option value="file4">github.com/linkdata/gitsemver/internal/gitsemver/versioninfo.go (100.0%)</option>
 				
@@ -647,10 +647,10 @@ func (dg DefaultGitter) GetBranchesFromTag(repo, tag string) (branches []string,
                                         s = strings.TrimSpace(strings.TrimPrefix(s, "*"))
                                         // Skip symbolic refs like "origin/HEAD -&gt; origin/main".
                                         if len(s) &gt; 0 &amp;&amp; !strings.Contains(s, " ") </span><span class="cov8" title="1">{
-                                                if strings.HasPrefix(s, "remotes/") </span><span class="cov0" title="0">{
+                                                if strings.HasPrefix(s, "remotes/") </span><span class="cov8" title="1">{
                                                         // Normalize "remotes/&lt;remote&gt;/&lt;branch&gt;" into "&lt;branch&gt;".
                                                         s = strings.TrimPrefix(s, "remotes/")
-                                                        if idx := strings.IndexByte(s, '/'); idx &gt; -1 </span><span class="cov0" title="0">{
+                                                        if idx := strings.IndexByte(s, '/'); idx &gt; -1 </span><span class="cov8" title="1">{
                                                                 s = s[idx+1:]
                                                         }</span>
                                                 }
@@ -721,11 +721,11 @@ func (dg DefaultGitter) PushTag(repo, tag string) (err error) <span class="cov8"
         <span class="cov8" title="1">return</span>
 }
 
-func (dg DefaultGitter) DeleteRemoteTag(repo, tag string) (err error) <span class="cov0" title="0">{
-        if tag != "" </span><span class="cov0" title="0">{
+func (dg DefaultGitter) DeleteRemoteTag(repo, tag string) (err error) <span class="cov8" title="1">{
+        if tag != "" </span><span class="cov8" title="1">{
                 _, err = dg.Exec("-C", repo, "push", "--delete", "origin", tag)
         }</span>
-        <span class="cov0" title="0">return</span>
+        <span class="cov8" title="1">return</span>
 }
 
 func (dg DefaultGitter) CleanStatus(repo string) (yes bool, err error) <span class="cov8" title="1">{
@@ -914,13 +914,15 @@ import (
 )
 
 var writeFileFn = os.WriteFile
+var removeFileFn = os.Remove
 
 func replaceFile(source, target string) (err error) <span class="cov8" title="1">{
         bakname := fmt.Sprintf("%s.gitsemver-%x", target, rand.Uint64())                                       // #nosec G404
         if renameerr := os.Rename(target, bakname); renameerr == nil || errors.Is(renameerr, fs.ErrNotExist) </span><span class="cov8" title="1">{ // #nosec G703
                 if err = os.Rename(source, target); err == nil </span><span class="cov8" title="1">{ // #nosec G703
                         if renameerr == nil </span><span class="cov8" title="1">{
-                                err = os.Remove(bakname) // #nosec G703
+                                // The replacement already succeeded. Treat backup deletion as best-effort.
+                                _ = removeFileFn(bakname) // #nosec G703
                         }</span>
                         <span class="cov8" title="1">return</span>
                 }
@@ -984,6 +986,15 @@ var (
 
 var exitFn func(int) = os.Exit
 var testMode bool
+
+func exitCodeForError(err error) int <span class="cov8" title="1">{
+        retv := 125
+        var errno syscall.Errno
+        if errors.As(err, &amp;errno) </span><span class="cov8" title="1">{
+                retv = int(errno) // #nosec G115
+        }</span>
+        <span class="cov8" title="1">return retv</span>
+}
 
 func mainfn() int <span class="cov8" title="1">{
         repoDir := os.ExpandEnv(flag.Arg(0))
@@ -1054,14 +1065,8 @@ func mainfn() int <span class="cov8" title="1">{
                 <span class="cov8" title="1">_ = vs.Git.DeleteTag(repoDir, createTag)</span>
         }
 
-        <span class="cov8" title="1">retv := 125
-        fmt.Fprintln(os.Stderr, err.Error()) // #nosec G705
-        if e := errors.Unwrap(err); e != nil </span><span class="cov8" title="1">{
-                if errno, ok := e.(syscall.Errno); ok </span><span class="cov8" title="1">{
-                        retv = int(errno) // #nosec G115
-                }</span>
-        }
-        <span class="cov8" title="1">return retv</span>
+        <span class="cov8" title="1">fmt.Fprintln(os.Stderr, err.Error()) // #nosec G705
+        return exitCodeForError(err)</span>
 }
 
 func main() <span class="cov8" title="1">{
