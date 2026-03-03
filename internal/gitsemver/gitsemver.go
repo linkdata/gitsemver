@@ -13,6 +13,8 @@ import (
 // A GitSemVer instance is intended for one repository per run.
 // Reusing a single instance across multiple repositories is unsupported and
 // can produce incorrect results because internal tag metadata is cached.
+// Reusing a single instance across repeated GetVersion calls after repository
+// changes is also unsupported for the same reason.
 type GitSemVer struct {
 	Git         Gitter      // Git
 	Env         Environment // environment
@@ -226,6 +228,8 @@ func (vs *GitSemVer) GetBuild(repo string) (build string, err error) {
 }
 
 // GetVersion returns a VersionInfo for the source code in the Git repository.
+// A GitSemVer instance should be treated as single-snapshot state: if the repo
+// changes, create a new GitSemVer before calling GetVersion again.
 func (vs *GitSemVer) GetVersion(repo string) (vi VersionInfo, err error) {
 	if repo, err = vs.Git.CheckGitRepo(repo); err == nil {
 		if vi.Tag, vi.SameTree, err = vs.GetTag(repo); vi.Tag != "" && err == nil {

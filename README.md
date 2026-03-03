@@ -23,6 +23,9 @@ Supports raw git repositories as well as GitLab and GitHub builders.
 
 The implementation package is intentionally internal to this module and is not a
 supported external API.
+If reused anyway, create a new `GitSemVer` instance per version lookup
+snapshot; reusing one instance across repository changes can return stale data
+because tag metadata is cached.
 
 ### Installing
 
