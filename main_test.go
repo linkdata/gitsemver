@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -181,6 +182,22 @@ func TestPrepareOutput_WriteFileError(t *testing.T) {
 	_, _, err := prepareOutput(target, "x")
 	if err == nil {
 		t.Fatal("expected write error")
+	}
+}
+
+func TestExitCodeForError_Default(t *testing.T) {
+	if got := exitCodeForError(errors.New("boom")); got != 125 {
+		t.Fatalf("expected default exit code 125, got %d", got)
+	}
+}
+
+func TestExitCodeForError_FindsErrnoInJoinedError(t *testing.T) {
+	joined := errors.Join(
+		errors.New("publish failed"),
+		&os.PathError{Op: "open", Path: "/tmp/x", Err: syscall.ENOENT},
+	)
+	if got := exitCodeForError(joined); got != int(syscall.ENOENT) {
+		t.Fatalf("expected exit code %d, got %d", int(syscall.ENOENT), got)
 	}
 }
 
@@ -663,5 +680,62 @@ func TestMainFnNoFetchDoesNotRunAnyFetch(t *testing.T) {
 	logText := string(logBytes)
 	if strings.Contains(logText, " fetch --") {
 		t.Fatalf("unexpected git fetch while -nofetch is set:\n%s", logText)
+	}
+}
+
+func TestMainFnIncPatchInTestModeDoesNotCreateTag(t *testing.T) {
+	flag.Parse()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	origGit, origOut, origName := *flagGit, *flagOut, *flagName
+	origDebug, origGoPackage := *flagDebug, *flagGoPackage
+	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
+	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origTestMode := testMode
+	defer func() {
+		*flagGit, *flagOut, *flagName = origGit, origOut, origName
+		*flagDebug, *flagGoPackage = origDebug, origGoPackage
+		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
+		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		testMode = origTestMode
+	}()
+
+	work := t.TempDir()
+	runGit(t, work, "init", "-q")
+	runGit(t, work, "config", "user.email", "test@example.com")
+	runGit(t, work, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(work, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "add", "a.txt")
+	runGit(t, work, "commit", "-q", "-m", "c1")
+	runGit(t, work, "tag", "v1.0.0")
+
+	if err := os.Chdir(work); err != nil {
+		t.Fatal(err)
+	}
+
+	*flagGit = "git"
+	*flagOut = "out.txt"
+	*flagName = ""
+	*flagDebug = false
+	*flagGoPackage = false
+	*flagNoFetch = true
+	*flagNoNewline = false
+	*flagIncPatch = true
+	*flagBranch = false
+	testMode = true
+
+	if code := mainfn(); code != 0 {
+		t.Fatalf("mainfn failed with code %d", code)
+	}
+
+	localTags := runGit(t, work, "tag", "--list")
+	if strings.Contains(localTags, "v1.0.1") {
+		t.Fatalf("unexpected local tag v1.0.1 in test mode: %q", localTags)
 	}
 }

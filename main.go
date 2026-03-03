@@ -88,6 +88,15 @@ var (
 var exitFn func(int) = os.Exit
 var testMode bool
 
+func exitCodeForError(err error) int {
+	retv := 125
+	var errno syscall.Errno
+	if errors.As(err, &errno) {
+		retv = int(errno) // #nosec G115
+	}
+	return retv
+}
+
 func mainfn() int {
 	repoDir := os.ExpandEnv(flag.Arg(0))
 	if repoDir == "" {
@@ -157,14 +166,8 @@ func mainfn() int {
 		_ = vs.Git.DeleteTag(repoDir, createTag)
 	}
 
-	retv := 125
 	fmt.Fprintln(os.Stderr, err.Error()) // #nosec G705
-	if e := errors.Unwrap(err); e != nil {
-		if errno, ok := e.(syscall.Errno); ok {
-			retv = int(errno) // #nosec G115
-		}
-	}
-	return retv
+	return exitCodeForError(err)
 }
 
 func main() {
