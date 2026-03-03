@@ -59,6 +59,13 @@ func Test_VersionInfo_IncPatch_InvalidTagNoLoop(t *testing.T) {
 	}
 }
 
+func Test_VersionInfo_IncPatch_OverflowPatchLevel(t *testing.T) {
+	vi := &gitsemver.VersionInfo{Tag: "v1.2.9999999999999999999999999"}
+	if got := vi.IncPatch(); got != "v1.2.9999999999999999999999999" {
+		t.Fatalf("expected unchanged overflow patch tag, got %q", got)
+	}
+}
+
 func Test_CleanBranch(t *testing.T) {
 	isEqual(t, "branch-with-dots", gitsemver.CleanBranch("-branch.with..dots"))
 	isEqual(t, "gitlab-branch", gitsemver.CleanBranch("gitlab---branch"))

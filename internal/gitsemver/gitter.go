@@ -204,7 +204,7 @@ func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string, err erro
 
 		if len(candidates) > 0 {
 			seen := map[string]struct{}{}
-			for err == nil && len(seen) < len(candidates) {
+			for i := 0; err == nil && i < len(candidates); i++ {
 				// Ask git for the closest tag by ancestry. If it returns a non-strict
 				// semver tag (for example "1foo"), exclude it and try again.
 				args := []string{
@@ -220,12 +220,6 @@ func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string, err erro
 				var b []byte
 				if b, err = dg.Exec(args...); err == nil {
 					candidate := strings.TrimSpace(string(b))
-					if _, alreadySeen := seen[candidate]; alreadySeen {
-						// should not happen unless repo changes mid-run
-						// but if it does, exit with error
-						err = fmt.Errorf("tag %q seen twice", candidate)
-						candidate = ""
-					}
 					if candidate == "" || reMatchSemver.MatchString(candidate) {
 						tag = candidate
 						return
