@@ -118,7 +118,7 @@ func hasGitMarker(dir string) (yes bool, err error) {
 		return false, ErrNotDirectory
 	}
 	var b []byte
-	if b, err = os.ReadFile(gitPath); err != nil {
+	if b, err = os.ReadFile(gitPath); /* #nosec G304 */ err != nil {
 		return false, err
 	}
 	s := strings.TrimSpace(string(b))
