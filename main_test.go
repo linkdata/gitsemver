@@ -3,12 +3,27 @@ package main
 import (
 	"flag"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func init() {
 	testMode = true
+}
+
+func runGit(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	if dir != "" {
+		cmd.Dir = dir
+	}
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %q failed: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(b)))
+	}
+	return strings.TrimSpace(string(b))
 }
 
 func TestMainFn(t *testing.T) {
@@ -59,4 +74,70 @@ func TestMainError(t *testing.T) {
 	*flagOut = "/proc/.nonexistant"
 	*flagDebug = true
 	main()
+}
+
+func TestMainFnIncPatchDoesNotPushOnWriteError(t *testing.T) {
+	flag.Parse()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	origGit, origOut, origName := *flagGit, *flagOut, *flagName
+	origDebug, origGoPackage := *flagDebug, *flagGoPackage
+	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
+	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origTestMode := testMode
+	defer func() {
+		*flagGit, *flagOut, *flagName = origGit, origOut, origName
+		*flagDebug, *flagGoPackage = origDebug, origGoPackage
+		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
+		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		testMode = origTestMode
+	}()
+
+	base := t.TempDir()
+	origin := filepath.Join(base, "origin.git")
+	work := filepath.Join(base, "work")
+
+	runGit(t, "", "init", "--bare", "-q", origin)
+	runGit(t, "", "clone", "-q", origin, work)
+	runGit(t, work, "config", "user.email", "test@example.com")
+	runGit(t, work, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(work, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "add", "a.txt")
+	runGit(t, work, "commit", "-q", "-m", "c1")
+	runGit(t, work, "tag", "v1.0.0")
+	runGit(t, work, "push", "-q", "origin", "HEAD", "--tags")
+
+	if err := os.Chdir(work); err != nil {
+		t.Fatal(err)
+	}
+
+	*flagGit = "git"
+	*flagOut = "missing-dir/out.txt"
+	*flagName = ""
+	*flagDebug = false
+	*flagGoPackage = false
+	*flagNoFetch = true
+	*flagNoNewline = false
+	*flagIncPatch = true
+	*flagBranch = false
+	testMode = false
+
+	if code := mainfn(); code == 0 {
+		t.Fatal("mainfn unexpectedly succeeded")
+	}
+
+	localTags := runGit(t, work, "tag", "--list")
+	if strings.Contains(localTags, "v1.0.1") {
+		t.Fatalf("unexpected local tag v1.0.1: %q", localTags)
+	}
+	remoteTags := runGit(t, work, "ls-remote", "--tags", "origin")
+	if strings.Contains(remoteTags, "refs/tags/v1.0.1") {
+		t.Fatalf("unexpected remote tag v1.0.1: %q", remoteTags)
+	}
 }

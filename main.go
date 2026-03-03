@@ -83,8 +83,8 @@ func mainfn() int {
 							content += "\n"
 						}
 						if err = vs.Git.CreateTag(repoDir, createTag); err == nil {
-							if err = vs.Git.PushTag(repoDir, createTag); err == nil {
-								if err = writeOutput(outpath, content); err == nil {
+							if err = writeOutput(outpath, content); err == nil {
+								if err = vs.Git.PushTag(repoDir, createTag); err == nil {
 									return 0
 								}
 							}
