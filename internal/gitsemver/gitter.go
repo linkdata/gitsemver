@@ -87,8 +87,6 @@ func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) {
 	stderr := bytes.TrimSpace(serr.Bytes())
 	if err != nil {
 		err = NewErrGitExec(dg.Git, args, err, string(stderr))
-	} else {
-		output = append(output, stderr...)
 	}
 	return
 }

@@ -288,6 +288,28 @@ func Test_DefaultGitter_GetBuild(t *testing.T) {
 	}
 }
 
+func Test_DefaultGitter_GetBuild_IgnoresTraceStderr(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+
+	t.Setenv("GIT_TRACE", "1")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	build, err := dg.GetBuild(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if build != "1" {
+		t.Fatalf("expected build count 1, got %q", build)
+	}
+}
+
 func Test_maybeSync(t *testing.T) {
 	if f, err := os.CreateTemp("", ""); err == nil {
 		defer os.Remove(f.Name())
