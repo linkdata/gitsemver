@@ -2,6 +2,7 @@ package gitsemver_test
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -378,5 +379,23 @@ func Test_DefaultGitter_CleanStatus(t *testing.T) {
 	}
 	if buf.Len() == 0 {
 		t.Error("no log?")
+	}
+}
+
+func Test_DefaultGitter_ExecPreservesErrGitExecInDebugMode(t *testing.T) {
+	var buf bytes.Buffer
+	dg, err := gitsemver.NewDefaultGitter("git", &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = dg.Exec("-C", "/", "rev-parse", "HEAD")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !errors.Is(err, gitsemver.ErrGitExec) {
+		t.Fatalf("expected wrapped ErrGitExec, got %T: %v", err, err)
+	}
+	if buf.Len() == 0 {
+		t.Fatal("expected debug output")
 	}
 }

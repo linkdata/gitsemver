@@ -63,21 +63,22 @@ func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) {
 	cmd := exec.Command(dg.Git, args...) /* #nosec G204 */
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
-	if dg.DebugOut != nil {
-		fmt.Fprintf(dg.DebugOut, "%q =>", strings.Join(cmd.Args, " "))
-		MaybeSync(dg.DebugOut)
-		defer func(w io.Writer) {
-			result := "OK"
-			for errors.Unwrap(err) != nil {
-				err = errors.Unwrap(err)
-			}
-			if err != nil {
-				result = err.Error()
-			}
-			if serr.Len() > 0 {
-				result += fmt.Sprintf(" %q", serr.String())
-			}
-			fmt.Fprintf(w, " (%v+%v) %v\n", sout.Len(), serr.Len(), result)
+		if dg.DebugOut != nil {
+			fmt.Fprintf(dg.DebugOut, "%q =>", strings.Join(cmd.Args, " "))
+			MaybeSync(dg.DebugOut)
+			defer func(w io.Writer) {
+				result := "OK"
+				dbgErr := err
+				for errors.Unwrap(dbgErr) != nil {
+					dbgErr = errors.Unwrap(dbgErr)
+				}
+				if dbgErr != nil {
+					result = dbgErr.Error()
+				}
+				if serr.Len() > 0 {
+					result += fmt.Sprintf(" %q", serr.String())
+				}
+				fmt.Fprintf(w, " (%v+%v) %v\n", sout.Len(), serr.Len(), result)
 			MaybeSync(w)
 		}(dg.DebugOut)
 	}
