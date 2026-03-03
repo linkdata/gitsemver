@@ -15,13 +15,15 @@ import (
 )
 
 var writeFileFn = os.WriteFile
+var removeFileFn = os.Remove
 
 func replaceFile(source, target string) (err error) {
 	bakname := fmt.Sprintf("%s.gitsemver-%x", target, rand.Uint64())                                       // #nosec G404
 	if renameerr := os.Rename(target, bakname); renameerr == nil || errors.Is(renameerr, fs.ErrNotExist) { // #nosec G703
 		if err = os.Rename(source, target); err == nil { // #nosec G703
 			if renameerr == nil {
-				err = os.Remove(bakname) // #nosec G703
+				// The replacement already succeeded. Treat backup deletion as best-effort.
+				_ = removeFileFn(bakname) // #nosec G703
 			}
 			return
 		}

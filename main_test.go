@@ -92,6 +92,35 @@ func TestReplaceFile_RenameTargetError(t *testing.T) {
 	}
 }
 
+func TestReplaceFile_IgnoresBackupRemoveErrorAfterSuccessfulReplace(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.txt")
+	target := filepath.Join(dir, "target.txt")
+	if err := os.WriteFile(source, []byte("new\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte("old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	origRemoveFileFn := removeFileFn
+	removeFileFn = func(string) error {
+		return errors.New("forced remove error")
+	}
+	defer func() { removeFileFn = origRemoveFileFn }()
+
+	if err := replaceFile(source, target); err != nil {
+		t.Fatalf("replaceFile should ignore backup delete errors, got: %v", err)
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "new\n" {
+		t.Fatalf("unexpected target contents %q", string(got))
+	}
+}
+
 func TestPrepareOutput_Stdout(t *testing.T) {
 	publish, cleanup, err := prepareOutput("", "hello")
 	if err != nil {
