@@ -40,7 +40,7 @@ func prepareOutput(fileName, content string) (publish func() error, cleanup func
 	}
 	if fileName != "" {
 		fileName = filepath.Clean(fileName)
-		if fi, statErr := os.Stat(fileName); statErr == nil {
+		if fi, statErr := os.Stat(fileName); statErr == nil { // #nosec G703
 			if fi.IsDir() {
 				err = fmt.Errorf("%q is a directory", fileName)
 				return
