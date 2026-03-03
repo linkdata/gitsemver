@@ -414,3 +414,29 @@ func Test_VersionStringer_GetTag_ClosestTagNotOverriddenByUnreachableSameTreeTag
 		t.Fatalf("expected sameTree false, got true")
 	}
 }
+
+func Test_VersionStringer_GetTag_PicksHighestMixedPrefixTagOnSameTree(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	runGit(t, repo, nil, "tag", "v1.2.3")
+	runGit(t, repo, nil, "tag", "2.0.0")
+
+	vs, err := gitsemver.New("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag, sameTree, err := vs.GetTag(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag != "2.0.0" {
+		t.Fatalf("expected highest mixed-prefix tag 2.0.0, got %q", tag)
+	}
+	if !sameTree {
+		t.Fatalf("expected sameTree true, got false")
+	}
+}

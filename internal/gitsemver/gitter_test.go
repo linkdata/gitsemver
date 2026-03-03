@@ -201,6 +201,30 @@ func Test_DefaultGitter_GetTags_IncludesSingleDigitSemverTags(t *testing.T) {
 	}
 }
 
+func Test_DefaultGitter_GetTags_SortsMixedPrefixSemverDescending(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	runGit(t, repo, nil, "tag", "v1.2.3")
+	runGit(t, repo, nil, "tag", "2.0.0")
+	runGit(t, repo, nil, "tag", "v10.0.0")
+	runGit(t, repo, nil, "tag", "1.2.4")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tags, err := dg.GetTags(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Compare(tags, []string{"v10.0.0", "2.0.0", "1.2.4", "v1.2.3"}) != 0 {
+		t.Fatalf("unexpected tags: %v", tags)
+	}
+}
+
 func Test_DefaultGitter_GetCurrentTreeHash(t *testing.T) {
 	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {

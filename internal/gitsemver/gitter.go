@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -158,6 +159,20 @@ func (dg DefaultGitter) CheckGitRepo(dir string) (repo string, err error) {
 // with or without a leading "v".
 var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
 
+func semverKey(tag string) [3]int {
+	var key [3]int
+	core := strings.TrimPrefix(tag, "v")
+	parts := strings.Split(core, ".")
+	for i := 0; i < len(parts) && i < len(key); i++ {
+		n, err := strconv.Atoi(parts[i])
+		if err != nil {
+			break
+		}
+		key[i] = n
+	}
+	return key
+}
+
 // GetTags returns all tags, sorted by version descending.
 // The latest tag is the first in the list.
 func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) {
@@ -168,6 +183,18 @@ func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) {
 				tags = append(tags, tag)
 			}
 		}
+		// Git's multi-pattern listing can interleave v-prefixed and non-prefixed
+		// tags in a way that is not globally version-sorted. Normalize here.
+		sort.SliceStable(tags, func(i, j int) bool {
+			left := semverKey(tags[i])
+			right := semverKey(tags[j])
+			for idx := range left {
+				if left[idx] != right[idx] {
+					return left[idx] > right[idx]
+				}
+			}
+			return false
+		})
 	}
 	return
 }
