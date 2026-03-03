@@ -14,6 +14,8 @@ import (
 	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
 )
 
+var writeFileFn = os.WriteFile
+
 func replaceFile(source, target string) (err error) {
 	bakname := fmt.Sprintf("%s.gitsemver-%x", target, rand.Uint64())                                       // #nosec G404
 	if renameerr := os.Rename(target, bakname); renameerr == nil || errors.Is(renameerr, fs.ErrNotExist) { // #nosec G703
@@ -53,18 +55,16 @@ func prepareOutput(fileName, content string) (publish func() error, cleanup func
 		var f *os.File
 		if f, err = os.CreateTemp(filepath.Dir(fileName), filepath.Base(fileName)+".gitsemver-*"); err == nil {
 			tempFile := f.Name()
+			_ = f.Close()
 			cleanup = func() {
 				_ = os.Remove(tempFile) // #nosec G703
 			}
-			if _, err = f.WriteString(content); err == nil {
-				if err = f.Close(); err == nil {
-					publish = func() error {
-						return replaceFile(tempFile, fileName)
-					}
-					return
+			if err = writeFileFn(tempFile, []byte(content), 0o600); err == nil {
+				publish = func() error {
+					return replaceFile(tempFile, fileName)
 				}
+				return
 			}
-			_ = f.Close()
 			cleanup()
 		}
 	}

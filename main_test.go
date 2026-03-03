@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -24,6 +27,132 @@ func runGit(t *testing.T, dir string, args ...string) string {
 		t.Fatalf("git %q failed: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(b)))
 	}
 	return strings.TrimSpace(string(b))
+}
+
+func TestReplaceFile_TargetMissing(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.txt")
+	target := filepath.Join(dir, "target.txt")
+	if err := os.WriteFile(source, []byte("new\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := replaceFile(source, target); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "new\n" {
+		t.Fatalf("unexpected target contents %q", string(got))
+	}
+	if _, err := os.Stat(source); !os.IsNotExist(err) {
+		t.Fatalf("expected source to be renamed away, got err=%v", err)
+	}
+}
+
+func TestReplaceFile_RestoreTargetOnSourceRenameError(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "missing-source.txt")
+	target := filepath.Join(dir, "target.txt")
+	if err := os.WriteFile(target, []byte("old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := replaceFile(source, target); err == nil {
+		t.Fatal("expected replaceFile to fail")
+	}
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "old\n" {
+		t.Fatalf("target should be restored, got %q", string(got))
+	}
+}
+
+func TestReplaceFile_RenameTargetError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod-based permission test is unix-specific")
+	}
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.txt")
+	target := filepath.Join(dir, "target.txt")
+	if err := os.WriteFile(source, []byte("new\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(target, []byte("old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(dir, 0o700) }()
+	if err := replaceFile(source, target); err == nil {
+		t.Fatal("expected replaceFile to fail")
+	}
+}
+
+func TestPrepareOutput_Stdout(t *testing.T) {
+	publish, cleanup, err := prepareOutput("", "hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	defer func() { os.Stdout = oldStdout }()
+	if err := publish(); err != nil {
+		t.Fatal(err)
+	}
+	_ = w.Close()
+	b, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(b) != "hello" {
+		t.Fatalf("unexpected stdout %q", string(b))
+	}
+}
+
+func TestPrepareOutput_RejectsDirectory(t *testing.T) {
+	_, _, err := prepareOutput(t.TempDir(), "x")
+	if err == nil {
+		t.Fatal("expected directory target error")
+	}
+}
+
+func TestPrepareOutput_StatError(t *testing.T) {
+	longName := strings.Repeat("a", 300)
+	target := filepath.Join(t.TempDir(), longName, "out.txt")
+	_, _, err := prepareOutput(target, "x")
+	if err == nil {
+		t.Fatal("expected stat error for invalid path")
+	}
+}
+
+func TestPrepareOutput_CreateTempError(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "missing", "out.txt")
+	_, _, err := prepareOutput(target, "x")
+	if err == nil {
+		t.Fatal("expected create temp error")
+	}
+}
+
+func TestPrepareOutput_WriteFileError(t *testing.T) {
+	origWriteFileFn := writeFileFn
+	writeFileFn = func(string, []byte, os.FileMode) error {
+		return errors.New("forced write error")
+	}
+	defer func() { writeFileFn = origWriteFileFn }()
+	target := filepath.Join(t.TempDir(), "out.txt")
+	_, _, err := prepareOutput(target, "x")
+	if err == nil {
+		t.Fatal("expected write error")
+	}
 }
 
 func TestMainFn(t *testing.T) {
