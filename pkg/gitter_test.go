@@ -3,11 +3,42 @@ package gitsemver_test
 import (
 	"bytes"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	gitsemver "github.com/linkdata/gitsemver/pkg"
 )
+
+func runGit(t *testing.T, repo string, env map[string]string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
+	if len(env) > 0 {
+		cmd.Env = os.Environ()
+		for k, v := range env {
+			cmd.Env = append(cmd.Env, k+"="+v)
+		}
+	}
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %q failed: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(b)))
+	}
+	return strings.TrimSpace(string(b))
+}
+
+func commitAt(t *testing.T, repo, fileName, content, message, timestamp string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(repo, fileName), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, repo, nil, "add", fileName)
+	runGit(t, repo, map[string]string{
+		"GIT_AUTHOR_DATE":    timestamp,
+		"GIT_COMMITTER_DATE": timestamp,
+	}, "commit", "-q", "-m", message)
+}
 
 func Test_NewDefaultGitter_SucceedsNormally(t *testing.T) {
 	dg, err := gitsemver.NewDefaultGitter("git", nil)
@@ -174,6 +205,37 @@ func Test_DefaultGitter_GetClosestTag(t *testing.T) {
 	}
 	if tag == "" {
 		t.Error("no closest tag for HEAD")
+	}
+}
+
+func Test_DefaultGitter_GetClosestTag_HEADUsesReachableTag(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	runGit(t, repo, nil, "tag", "v1.0.0")
+
+	runGit(t, repo, nil, "checkout", "-q", "-b", "feature")
+	commitAt(t, repo, "a.txt", "a\nb\n", "c2", "2020-01-02T00:00:00Z")
+
+	runGit(t, repo, nil, "checkout", "-q", "-b", "other", "HEAD~1")
+	commitAt(t, repo, "a.txt", "a\nc\n", "c3", "2020-01-03T00:00:00Z")
+	runGit(t, repo, nil, "tag", "v9.0.0")
+
+	runGit(t, repo, nil, "checkout", "-q", "feature")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag, err := dg.GetClosestTag(repo, "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag != "v1.0.0" {
+		t.Fatalf("expected closest reachable tag v1.0.0, got %q", tag)
 	}
 }
 

@@ -181,13 +181,6 @@ func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string, err er
 func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string, err error) {
 	_, _ = dg.Exec("-C", repo, "fetch", "--unshallow", "--tags") // ignore "unshallow on a complete repository does not make sense"
 	var b []byte
-	if commit == "HEAD" {
-		if b, err = dg.Exec("-C", repo, "rev-list", "--tags", "--max-count=1"); err == nil && len(b) > 0 /* #nosec G204 */ {
-			if tag, err = dg.GetClosestTag(repo, strings.TrimSpace(string(b))); tag != "" {
-				return
-			}
-		}
-	}
 	if b, err = dg.Exec("-C", repo, "describe", "--tags", "--match=v[0-9]*", "--match=[0-9]*", "--abbrev=0", commit); len(b) > 0 /* #nosec G204 */ {
 		tag = strings.TrimSpace(string(b))
 	}
