@@ -16,7 +16,7 @@ func writeOutput(fileName, content string) (err error) {
 	f := os.Stdout
 	if len(fileName) > 0 {
 		fileName = filepath.Clean(fileName)
-		if f, err = os.Create(fileName); err != nil /* #nosec G304 */ {
+		if f, err = os.Create(fileName); /* #nosec G703 */ err != nil /* #nosec G304 */ {
 			return
 		}
 		defer f.Close()
@@ -97,10 +97,10 @@ func mainfn() int {
 	}
 
 	retv := 125
-	fmt.Fprintln(os.Stderr, err.Error())
+	fmt.Fprintln(os.Stderr, err.Error()) // #nosec G705
 	if e := errors.Unwrap(err); e != nil {
 		if errno, ok := e.(syscall.Errno); ok {
-			retv = int(errno)
+			retv = int(errno) // #nosec G115
 		}
 	}
 	return retv
