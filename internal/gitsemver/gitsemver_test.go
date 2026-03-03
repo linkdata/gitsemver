@@ -3,6 +3,8 @@ package gitsemver_test
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
@@ -363,5 +365,40 @@ func TestGitSemVer_Debug(t *testing.T) {
 	vs.Debug("foo")
 	if x := buf.String(); x != "foo" {
 		t.Error(x)
+	}
+}
+
+func Test_VersionStringer_GetTag_ClosestTagNotOverriddenByUnreachableSameTreeTag(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+
+	commitAt(t, repo, "a.txt", "root\n", "c1", "2020-01-01T00:00:00Z")
+	commitAt(t, repo, "a.txt", "shared\n", "c2", "2020-01-02T00:00:00Z")
+	runGit(t, repo, nil, "tag", "v1.0.0")
+	commitAt(t, repo, "a.txt", "head\n", "c3", "2020-01-03T00:00:00Z")
+
+	runGit(t, repo, nil, "checkout", "-q", "-b", "side", "HEAD~2")
+	if err := os.WriteFile(filepath.Join(repo, "a.txt"), []byte("shared\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, repo, nil, "commit", "-qam", "side-shared")
+	runGit(t, repo, nil, "tag", "v9.0.0")
+	runGit(t, repo, nil, "checkout", "-q", "-")
+
+	vs, err := gitsemver.New("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag, sameTree, err := vs.GetTag(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag != "v1.0.0" {
+		t.Fatalf("expected closest reachable tag v1.0.0, got %q", tag)
+	}
+	if sameTree {
+		t.Fatalf("expected sameTree false, got true")
 	}
 }
