@@ -115,6 +115,29 @@ func Test_CheckGitRepo_IgnoresFileNamedGit(t *testing.T) {
 	}
 }
 
+func Test_CheckGitRepo_SucceedsForWorktree(t *testing.T) {
+	baseRepo := t.TempDir()
+	runGit(t, baseRepo, nil, "init", "-q")
+	runGit(t, baseRepo, nil, "config", "user.email", "test@example.com")
+	runGit(t, baseRepo, nil, "config", "user.name", "Test")
+	commitAt(t, baseRepo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+
+	worktreePath := filepath.Join(t.TempDir(), "wt")
+	runGit(t, baseRepo, nil, "worktree", "add", "-q", worktreePath, "-b", "feature")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo, err := dg.CheckGitRepo(worktreePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repo != worktreePath {
+		t.Fatalf("expected repo %q, got %q", worktreePath, repo)
+	}
+}
+
 func Test_DefaultGitter_GetBranch(t *testing.T) {
 	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {

@@ -102,18 +102,35 @@ func NewDefaultGitter(gitBin string, debugOut io.Writer) (gitter Gitter, err err
 
 var ErrNotDirectory = errors.New("not a directory")
 
-// checkDir checks that the given path is accessible and is a directory.
-// Returns nil if it is, else an error.
-func checkDir(dir string) (err error) {
-	_, err = os.ReadDir(dir)
-	return
+// hasGitMarker returns true when dir has a valid git marker at ".git":
+// either a directory (normal repo) or a file that starts with "gitdir:"
+// (worktree).
+func hasGitMarker(dir string) (yes bool, err error) {
+	gitPath := path.Join(dir, ".git")
+	var fi os.FileInfo
+	if fi, err = os.Stat(gitPath); err != nil {
+		return false, err
+	}
+	if fi.IsDir() {
+		return true, nil
+	}
+	if !fi.Mode().IsRegular() {
+		return false, ErrNotDirectory
+	}
+	var b []byte
+	if b, err = os.ReadFile(gitPath); err != nil {
+		return false, err
+	}
+	s := strings.TrimSpace(string(b))
+	return strings.HasPrefix(s, "gitdir:"), nil
 }
 
 // dirOrParentHasGitSubdir returns the name of a directory containing
-// a '.git' subdirectory or an empty string. It searches starting from
+// a valid '.git' marker or an empty string. It searches starting from
 // the given directory and looks in that and it's parents.
 func dirOrParentHasGitSubdir(s string) (dir string, err error) {
-	if err = checkDir(path.Join(s, ".git")); err != nil {
+	var hasMarker bool
+	if hasMarker, err = hasGitMarker(s); err != nil || !hasMarker {
 		s = path.Dir(s)
 		if s != "/" {
 			if s, e := dirOrParentHasGitSubdir(s); e == nil {
@@ -127,7 +144,7 @@ func dirOrParentHasGitSubdir(s string) (dir string, err error) {
 }
 
 // CheckGitRepo checks that the given directory is part of a git repository,
-// meaning that it or one of it's parent directories has a '.git' subdirectory.
+// meaning that it or one of its parent directories has a valid '.git' marker.
 // If it is, it returns the absolute path of the git repo and a nil error.
 func (dg DefaultGitter) CheckGitRepo(dir string) (repo string, err error) {
 	if dir, err = filepath.Abs(dir); err == nil {
