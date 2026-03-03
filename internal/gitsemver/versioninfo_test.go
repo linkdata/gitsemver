@@ -88,7 +88,7 @@ func Test_CleanBranch(t *testing.T) {
 	isEqual(t, "branch-with-dots", gitsemver.CleanBranch("-branch.with..dots"))
 	isEqual(t, "gitlab-branch", gitsemver.CleanBranch("gitlab---branch"))
 	isEqual(t, "github-branch", gitsemver.CleanBranch("github.branch."))
-	isEqual(t, "feature_x", gitsemver.CleanBranch("feature_x"))
+	isEqual(t, "feature-x", gitsemver.CleanBranch("feature_x"))
 }
 
 func Test_VersionInfo_Version_UsesSemverSafeBranch(t *testing.T) {
@@ -99,7 +99,7 @@ func Test_VersionInfo_Version_UsesSemverSafeBranch(t *testing.T) {
 		IsRelease: false,
 		SameTree:  false,
 	}
-	if got := vi.Version(); got != "v1.2.3-feature_x.42" {
-		t.Fatalf("expected branch-preserving version, got %q", got)
+	if got := vi.Version(); got != "v1.2.3-feature-x.42" {
+		t.Fatalf("expected semver-safe branch in version, got %q", got)
 	}
 }

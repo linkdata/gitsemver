@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	reOnlyWords = regexp.MustCompile(`[^\w]`)
+	reNonSemVerPreRelease = regexp.MustCompile(`[^0-9A-Za-z-]`)
 )
 
 type GitTag struct {
@@ -122,7 +122,8 @@ func (vi *VersionInfo) IncPatch() string {
 }
 
 func CleanBranch(branch string) string {
-	branch = reOnlyWords.ReplaceAllString(branch, "-")
+	// SemVer pre-release identifiers only allow [0-9A-Za-z-].
+	branch = reNonSemVerPreRelease.ReplaceAllString(branch, "-")
 	for {
 		if newSuffix := strings.ReplaceAll(branch, "--", "-"); newSuffix != branch {
 			branch = newSuffix
