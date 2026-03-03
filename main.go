@@ -137,6 +137,7 @@ func mainfn() int {
 									if err = publish(); err == nil {
 										return 0
 									}
+									err = errors.Join(err, vs.Git.DeleteRemoteTag(repoDir, createTag))
 								}
 							}
 						}

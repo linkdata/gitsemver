@@ -150,6 +150,10 @@ func (mg *MockGitter) PushTag(repo, tag string) (err error) {
 	return
 }
 
+func (mg *MockGitter) DeleteRemoteTag(repo, tag string) (err error) {
+	return
+}
+
 func (mg *MockGitter) CleanStatus(repo string) (bool, error) {
 	return !mg.dirty, nil
 }

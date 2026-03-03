@@ -41,6 +41,8 @@ type Gitter interface {
 	DeleteTag(repo, tag string) (err error)
 	// PushTag pushes the given tag to the origin. Does nothing if tag is empty.
 	PushTag(repo, tag string) (err error)
+	// DeleteRemoteTag deletes the given tag from origin. Does nothing if tag is empty.
+	DeleteRemoteTag(repo, tag string) (err error)
 	// CleanStatus returns true if there are no uncommitted changes in the repo
 	CleanStatus(repo string) (yes bool, err error)
 }
@@ -305,6 +307,13 @@ func (dg DefaultGitter) DeleteTag(repo, tag string) (err error) {
 func (dg DefaultGitter) PushTag(repo, tag string) (err error) {
 	if tag != "" {
 		_, err = dg.Exec("-C", repo, "push", "origin", tag)
+	}
+	return
+}
+
+func (dg DefaultGitter) DeleteRemoteTag(repo, tag string) (err error) {
+	if tag != "" {
+		_, err = dg.Exec("-C", repo, "push", "--delete", "origin", tag)
 	}
 	return
 }
