@@ -304,11 +304,15 @@ func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) <sp
 }
 
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) <span class="cov8" title="1">{
-        if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName != "" </span><span class="cov8" title="1">{
+        // Pull request events expose the source branch as GITHUB_HEAD_REF.
+        // Prefer this so PR builds are not mistaken for base-branch releases.
+        if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_HEAD_REF")); branchName != "" </span><span class="cov8" title="1">{
                 return
         }</span>
         <span class="cov8" title="1">refName := strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME"))
         if refName == "" </span><span class="cov8" title="1">{
+                // Fallback for contexts that only expose a base branch.
+                branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF"))
                 return
         }</span>
         <span class="cov8" title="1">if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) != "tag" </span><span class="cov8" title="1">{
