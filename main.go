@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"syscall"
 
 	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
@@ -15,7 +15,7 @@ import (
 func writeOutput(fileName, content string) (err error) {
 	f := os.Stdout
 	if len(fileName) > 0 {
-		fileName = path.Clean(fileName)
+		fileName = filepath.Clean(fileName)
 		if f, err = os.Create(fileName); err != nil /* #nosec G304 */ {
 			return
 		}
@@ -76,8 +76,8 @@ func mainfn() int {
 					}
 					if err == nil {
 						outpath := os.ExpandEnv(*flagOut)
-						if outpath != "" && !path.IsAbs(outpath) {
-							outpath = path.Join(repoDir, outpath)
+						if outpath != "" && !filepath.IsAbs(outpath) {
+							outpath = filepath.Join(repoDir, outpath)
 						}
 						if !*flagNoNewline {
 							content += "\n"

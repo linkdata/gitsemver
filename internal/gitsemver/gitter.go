@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -104,7 +103,7 @@ var ErrNotDirectory = errors.New("not a directory")
 // either a directory (normal repo) or a file that starts with "gitdir:"
 // (worktree).
 func hasGitMarker(dir string) (yes bool, err error) {
-	gitPath := path.Join(dir, ".git")
+	gitPath := filepath.Join(dir, ".git")
 	var fi os.FileInfo
 	if fi, err = os.Stat(gitPath); err != nil {
 		return false, err
@@ -127,18 +126,17 @@ func hasGitMarker(dir string) (yes bool, err error) {
 // a valid '.git' marker or an empty string. It searches starting from
 // the given directory and looks in that and it's parents.
 func dirOrParentHasGitSubdir(s string) (dir string, err error) {
-	var hasMarker bool
-	if hasMarker, err = hasGitMarker(s); err != nil || !hasMarker {
-		s = path.Dir(s)
-		if s != "/" {
-			if s, e := dirOrParentHasGitSubdir(s); e == nil {
-				return s, nil
-			}
+	for {
+		var hasMarker bool
+		if hasMarker, err = hasGitMarker(s); err == nil && hasMarker {
+			return s, nil
 		}
-	} else {
-		dir = s
+		parent := filepath.Dir(s)
+		if parent == s {
+			return "", err
+		}
+		s = parent
 	}
-	return
 }
 
 // CheckGitRepo checks that the given directory is part of a git repository,

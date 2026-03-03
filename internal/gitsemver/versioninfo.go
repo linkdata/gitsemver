@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"go/token"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -34,7 +34,7 @@ func findPackageName(repo, s string) (pkgName string, err error) {
 	pkgName = s
 	if pkgName == "" {
 		var b []byte
-		if b, err = os.ReadFile(path.Join(repo, "go.mod")); /*#nosec G304*/ err == nil {
+		if b, err = os.ReadFile(filepath.Join(repo, "go.mod")); /*#nosec G304*/ err == nil {
 			for _, s := range strings.Split(string(b), "\n") {
 				s = strings.TrimSpace(s)
 				if strings.HasPrefix(s, "module") {
@@ -66,7 +66,7 @@ func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) 
 	if err == nil {
 		generatedBy := ""
 		if executable, err := os.Executable(); err == nil {
-			generatedBy = " by " + path.Base(executable)
+			generatedBy = " by " + filepath.Base(executable)
 		}
 		retv = fmt.Sprintf(goPackageTemplate,
 			generatedBy, time.Now().UTC().Format(time.DateTime),
