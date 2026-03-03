@@ -178,6 +178,29 @@ func Test_DefaultGitter_GetTags(t *testing.T) {
 	}
 }
 
+func Test_DefaultGitter_GetTags_IncludesSingleDigitSemverTags(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	runGit(t, repo, nil, "tag", "1")
+	runGit(t, repo, nil, "tag", "2")
+	runGit(t, repo, nil, "tag", "1foo")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tags, err := dg.GetTags(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Compare(tags, []string{"2", "1"}) != 0 {
+		t.Fatalf("unexpected tags: %v", tags)
+	}
+}
+
 func Test_DefaultGitter_GetCurrentTreeHash(t *testing.T) {
 	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {

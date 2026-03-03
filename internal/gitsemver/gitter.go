@@ -162,10 +162,8 @@ func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) {
 	var b []byte
 	if b, err = dg.Exec("-C", repo, "tag", "--sort=-v:refname", "--list", "v[0-9]*", "[0-9]*"); len(b) > 0 /* #nosec G204 */ {
 		for _, tag := range strings.Split(string(b), "\n") {
-			if tag = strings.TrimSpace(tag); len(tag) > 1 {
-				if reMatchSemver.MatchString(tag) {
-					tags = append(tags, tag)
-				}
+			if tag = strings.TrimSpace(tag); tag != "" && reMatchSemver.MatchString(tag) {
+				tags = append(tags, tag)
 			}
 		}
 	}
