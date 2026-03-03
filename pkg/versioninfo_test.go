@@ -45,6 +45,20 @@ func Test_VersionInfo_IncPatch(t *testing.T) {
 	}
 }
 
+func Test_VersionInfo_IncPatch_PrereleaseTag(t *testing.T) {
+	vi := &gitsemver.VersionInfo{Tag: "v1.2.3-rc.1"}
+	if got := vi.IncPatch(); got != "v1.2.4" {
+		t.Fatalf("expected v1.2.4, got %q", got)
+	}
+}
+
+func Test_VersionInfo_IncPatch_InvalidTagNoLoop(t *testing.T) {
+	vi := &gitsemver.VersionInfo{Tag: "not-a-semver-tag"}
+	if got := vi.IncPatch(); got != "not-a-semver-tag" {
+		t.Fatalf("expected unchanged tag, got %q", got)
+	}
+}
+
 func Test_CleanBranch(t *testing.T) {
 	isEqual(t, "branch-with-dots", gitsemver.CleanBranch("-branch.with..dots"))
 	isEqual(t, "gitlab-branch", gitsemver.CleanBranch("gitlab---branch"))

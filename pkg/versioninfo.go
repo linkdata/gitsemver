@@ -89,16 +89,30 @@ func (vi *VersionInfo) HasTag(tag string) bool {
 
 // IncPatch increments the patch level of the version, returning the new tag.
 func (vi *VersionInfo) IncPatch() string {
+	baseTag := vi.Tag
+	// Ignore prerelease/build suffixes when incrementing the patch level.
+	if idx := strings.IndexAny(baseTag, "-+"); idx > -1 {
+		if core := baseTag[:idx]; reMatchSemver.MatchString(core) {
+			baseTag = core
+		}
+	}
+	if !reMatchSemver.MatchString(baseTag) {
+		vi.SameTree = true
+		return vi.Tag
+	}
+	vi.Tag = baseTag
 	for strings.Count(vi.Tag, ".") < 2 {
 		vi.Tag += ".0"
 	}
 	for {
 		patchindex := strings.LastIndexByte(vi.Tag, '.') + 1
-		if patchlevel, err := strconv.Atoi(vi.Tag[patchindex:]); err == nil {
-			vi.Tag = vi.Tag[:patchindex] + strconv.Itoa(patchlevel+1)
-			if !vi.HasTag(vi.Tag) {
-				break
-			}
+		patchlevel, err := strconv.Atoi(vi.Tag[patchindex:])
+		if err != nil {
+			break
+		}
+		vi.Tag = vi.Tag[:patchindex] + strconv.Itoa(patchlevel+1)
+		if !vi.HasTag(vi.Tag) {
+			break
 		}
 	}
 	vi.SameTree = true
