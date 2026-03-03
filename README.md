@@ -17,6 +17,15 @@ it creates a work-in-progress semver string like `v0.1.2-myfeature.123`.
 
 Supports raw git repositories as well as GitLab and GitHub builders.
 
+### Scope and limitations
+
+`gitsemver` is primarily intended to be used as a CLI tool, one process run per repository.
+
+The exported Go API currently keeps internal tag metadata on the `GitSemVer` instance.
+Reusing the same instance across multiple repositories is unsupported and may return
+an incorrect version (for example by mixing tag/tree data between repos).
+If you use the package directly, create a new `GitSemVer` instance per repository.
+
 ### Installing
 
 ```sh

@@ -8,12 +8,17 @@ import (
 	"strings"
 )
 
+// GitSemVer holds git metadata used while computing a version.
+//
+// A GitSemVer instance is intended for one repository per run.
+// Reusing a single instance across multiple repositories is unsupported and
+// can produce incorrect results because internal tag metadata is cached.
 type GitSemVer struct {
 	Git         Gitter      // Git
 	Env         Environment // environment
 	DebugOut    io.Writer   // if nit nil, write debug output here
 	cleanstatus bool        // true if there are no uncommitted changes in current tree
-	tags        []GitTag    // tags
+	tags        []GitTag    // cached tags for one repo during one version computation
 }
 
 // New returns a GitSemVer ready to examine
