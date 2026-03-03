@@ -159,17 +159,21 @@ func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) {
 }
 
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) {
-	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName == "" {
-		if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" {
-			if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" {
-				var branches []string
-				if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil {
-					for _, branchName = range branches {
-						if vs.IsReleaseBranch(branchName) {
-							return
-						}
-					}
-				}
+	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName != "" {
+		return
+	}
+	refName := strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME"))
+	if refName == "" {
+		return
+	}
+	if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) != "tag" {
+		return refName, nil
+	}
+	var branches []string
+	if branches, err = vs.Git.GetBranchesFromTag(repo, refName); err == nil {
+		for _, candidate := range branches {
+			if vs.IsReleaseBranch(candidate) {
+				return candidate, nil
 			}
 		}
 	}
@@ -177,18 +181,21 @@ func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error)
 }
 
 func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string, err error) {
-	if branchName = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_REF_NAME")); branchName != "" {
-		if strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")) == branchName {
-			var branches []string
-			if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil {
-				for _, branchName = range branches {
-					if vs.IsReleaseBranch(branchName) {
-						return
-					}
-				}
+	if branchName = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_REF_NAME")); branchName == "" {
+		return
+	}
+	if strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")) != branchName {
+		return branchName, nil
+	}
+	var branches []string
+	if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil {
+		for _, candidate := range branches {
+			if vs.IsReleaseBranch(candidate) {
+				return candidate, nil
 			}
 		}
 	}
+	branchName = ""
 	return
 }
 

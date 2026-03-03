@@ -225,7 +225,33 @@ func Test_VersionStringer_GetBranchFromTag_GitHub(t *testing.T) {
 	env["GITHUB_REF_NAME"] = "v1"
 	name, err = vs.GetBranch(".")
 	isEqual(t, err, nil)
-	isEqual(t, "onepointoh", name)
+	isEqual(t, "", name)
+}
+
+func Test_VersionStringer_GetBranchFromTag_GitHub_NoContainingBranch(t *testing.T) {
+	env := MockEnvironment{}
+	git := &MockGitter{}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
+
+	git.branch = "detached"
+	env["GITHUB_REF_TYPE"] = "tag"
+	env["GITHUB_REF_NAME"] = "v2.5.0"
+	name, err := vs.GetBranch(".")
+	isEqual(t, err, nil)
+	isEqual(t, "", name)
+}
+
+func Test_VersionStringer_GetBranchFromTag_GitLab_NoReleaseBranch(t *testing.T) {
+	env := MockEnvironment{}
+	git := &MockGitter{}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
+
+	git.branch = "detached"
+	env["CI_COMMIT_TAG"] = "v1"
+	env["CI_COMMIT_REF_NAME"] = "v1"
+	name, err := vs.GetBranch(".")
+	isEqual(t, err, nil)
+	isEqual(t, "", name)
 }
 
 func Test_VersionStringer_GetBuild(t *testing.T) {
