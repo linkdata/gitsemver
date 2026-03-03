@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/linkdata/gitsemver/internal/gitsemver/gitsemver.go (100.0%)</option>
 				
-				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (100.0%)</option>
+				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (98.8%)</option>
 				
 				<option value="file4">github.com/linkdata/gitsemver/internal/gitsemver/versioninfo.go (100.0%)</option>
 				
@@ -405,6 +405,7 @@ import (
         "path/filepath"
         "regexp"
         "runtime"
+        "sort"
         "strconv"
         "strings"
 )
@@ -553,6 +554,20 @@ func (dg DefaultGitter) CheckGitRepo(dir string) (repo string, err error) <span 
 // with or without a leading "v".
 var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
 
+func semverKey(tag string) [3]int <span class="cov8" title="1">{
+        var key [3]int
+        core := strings.TrimPrefix(tag, "v")
+        parts := strings.Split(core, ".")
+        for i := 0; i &lt; len(parts) &amp;&amp; i &lt; len(key); i++ </span><span class="cov8" title="1">{
+                n, err := strconv.Atoi(parts[i])
+                if err != nil </span><span class="cov0" title="0">{
+                        break</span>
+                }
+                <span class="cov8" title="1">key[i] = n</span>
+        }
+        <span class="cov8" title="1">return key</span>
+}
+
 // GetTags returns all tags, sorted by version descending.
 // The latest tag is the first in the list.
 func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) <span class="cov8" title="1">{
@@ -563,6 +578,18 @@ func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) <span cl
                                 tags = append(tags, tag)
                         }</span>
                 }
+                // Git's multi-pattern listing can interleave v-prefixed and non-prefixed
+                // tags in a way that is not globally version-sorted. Normalize here.
+                <span class="cov8" title="1">sort.SliceStable(tags, func(i, j int) bool </span><span class="cov8" title="1">{
+                        left := semverKey(tags[i])
+                        right := semverKey(tags[j])
+                        for idx := range left </span><span class="cov8" title="1">{
+                                if left[idx] != right[idx] </span><span class="cov8" title="1">{
+                                        return left[idx] &gt; right[idx]
+                                }</span>
+                        }
+                        <span class="cov0" title="0">return false</span>
+                })
         }
         <span class="cov8" title="1">return</span>
 }
