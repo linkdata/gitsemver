@@ -63,22 +63,22 @@ func (dg DefaultGitter) Exec(args ...string) (output []byte, err error) {
 	cmd := exec.Command(dg.Git, args...) /* #nosec G204 */
 	cmd.Stdout = &sout
 	cmd.Stderr = &serr
-		if dg.DebugOut != nil {
-			fmt.Fprintf(dg.DebugOut, "%q =>", strings.Join(cmd.Args, " "))
-			MaybeSync(dg.DebugOut)
-			defer func(w io.Writer) {
-				result := "OK"
-				dbgErr := err
-				for errors.Unwrap(dbgErr) != nil {
-					dbgErr = errors.Unwrap(dbgErr)
-				}
-				if dbgErr != nil {
-					result = dbgErr.Error()
-				}
-				if serr.Len() > 0 {
-					result += fmt.Sprintf(" %q", serr.String())
-				}
-				fmt.Fprintf(w, " (%v+%v) %v\n", sout.Len(), serr.Len(), result)
+	if dg.DebugOut != nil {
+		fmt.Fprintf(dg.DebugOut, "%q =>", strings.Join(cmd.Args, " "))
+		MaybeSync(dg.DebugOut)
+		defer func(w io.Writer) {
+			result := "OK"
+			dbgErr := err
+			for errors.Unwrap(dbgErr) != nil {
+				dbgErr = errors.Unwrap(dbgErr)
+			}
+			if dbgErr != nil {
+				result = dbgErr.Error()
+			}
+			if serr.Len() > 0 {
+				result += fmt.Sprintf(" %q", serr.String())
+			}
+			fmt.Fprintf(w, " (%v+%v) %v\n", sout.Len(), serr.Len(), result)
 			MaybeSync(w)
 		}(dg.DebugOut)
 	}
@@ -158,7 +158,7 @@ var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
 // The latest tag is the first in the list.
 func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) {
 	var b []byte
-	if b, err = dg.Exec("-C", repo, "tag", "--sort=-v:refname"); len(b) > 0 /* #nosec G204 */ {
+	if b, err = dg.Exec("-C", repo, "tag", "--sort=-v:refname", "--list", "v[0-9]*", "[0-9]*"); len(b) > 0 /* #nosec G204 */ {
 		for _, tag := range strings.Split(string(b), "\n") {
 			if tag = strings.TrimSpace(tag); len(tag) > 1 {
 				if reMatchSemver.MatchString(tag) {
@@ -194,9 +194,46 @@ func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string, err er
 // GetClosestTag returns the closest semver tag for the given commit hash.
 func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string, err error) {
 	_, _ = dg.Exec("-C", repo, "fetch", "--unshallow", "--tags") // ignore "unshallow on a complete repository does not make sense"
-	var b []byte
-	if b, err = dg.Exec("-C", repo, "describe", "--tags", "--match=v[0-9]*", "--match=[0-9]*", "--abbrev=0", commit); len(b) > 0 /* #nosec G204 */ {
-		tag = strings.TrimSpace(string(b))
+
+	var listed []byte
+	if listed, err = dg.Exec("-C", repo, "tag", "--merged", commit, "--list", "v[0-9]*", "[0-9]*"); err == nil {
+		candidates := map[string]struct{}{}
+		for _, listedTag := range strings.Fields(string(listed)) {
+			candidates[listedTag] = struct{}{}
+		}
+
+		if len(candidates) > 0 {
+			seen := map[string]struct{}{}
+			for err == nil && len(seen) < len(candidates) {
+				// Ask git for the closest tag by ancestry. If it returns a non-strict
+				// semver tag (for example "1foo"), exclude it and try again.
+				args := []string{
+					"-C", repo,
+					"describe", "--tags", "--abbrev=0",
+					"--match=v[0-9]*",
+					"--match=[0-9]*",
+				}
+				for pattern := range seen {
+					args = append(args, "--exclude="+pattern)
+				}
+				args = append(args, commit)
+				var b []byte
+				if b, err = dg.Exec(args...); err == nil {
+					candidate := strings.TrimSpace(string(b))
+					if _, alreadySeen := seen[candidate]; alreadySeen {
+						// should not happen unless repo changes mid-run
+						// but if it does, exit with error
+						err = fmt.Errorf("tag %q seen twice", candidate)
+						candidate = ""
+					}
+					if candidate == "" || reMatchSemver.MatchString(candidate) {
+						tag = candidate
+						return
+					}
+					seen[candidate] = struct{}{}
+				}
+			}
+		}
 	}
 	return
 }

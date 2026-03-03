@@ -263,6 +263,52 @@ func Test_DefaultGitter_GetClosestTag_HEADUsesReachableTag(t *testing.T) {
 	}
 }
 
+func Test_DefaultGitter_GetClosestTag_IgnoresNonSemverTags(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	runGit(t, repo, nil, "tag", "1foo")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag, err := dg.GetClosestTag(repo, "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag != "" {
+		t.Fatalf("expected no closest semver tag, got %q", tag)
+	}
+}
+
+func Test_DefaultGitter_GetClosestTag_SkipsNonSemverHEADTag(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	runGit(t, repo, nil, "tag", "v1.0.0")
+	commitAt(t, repo, "a.txt", "a\nb\n", "c2", "2020-01-02T00:00:00Z")
+	runGit(t, repo, nil, "tag", "1foo")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag, err := dg.GetClosestTag(repo, "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag != "v1.0.0" {
+		t.Fatalf("expected closest semver tag v1.0.0, got %q", tag)
+	}
+}
+
 func Test_DefaultGitter_GetBranchFromTag(t *testing.T) {
 	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
