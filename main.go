@@ -108,9 +108,16 @@ func mainfn() int {
 				var vi gitsemver.VersionInfo
 				if vi, err = vs.GetVersion(repoDir); err == nil {
 					if *flagIncPatch {
-						createTag = vi.IncPatch()
-						if testMode {
-							createTag = ""
+						var clean bool
+						if clean, err = vs.Git.CleanStatus(repoDir); err == nil {
+							if !clean {
+								err = errors.New("cannot use -incpatch with uncommitted changes")
+							} else {
+								createTag = vi.IncPatch()
+								if testMode {
+									createTag = ""
+								}
+							}
 						}
 					}
 					content := vi.Version()
