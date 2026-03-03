@@ -203,16 +203,61 @@ func TestExitCodeForError_FindsErrnoInJoinedError(t *testing.T) {
 
 func TestMainFn(t *testing.T) {
 	flag.Parse()
-	*flagGoPackage = true
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	origGit, origOut, origName := *flagGit, *flagOut, *flagName
+	origDebug, origGoPackage := *flagDebug, *flagGoPackage
+	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
+	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origTestMode := testMode
+	defer func() {
+		*flagGit, *flagOut, *flagName = origGit, origOut, origName
+		*flagDebug, *flagGoPackage = origDebug, origGoPackage
+		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
+		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		testMode = origTestMode
+	}()
+
+	work := t.TempDir()
+	runGit(t, work, "init", "-q")
+	runGit(t, work, "branch", "-M", "main")
+	runGit(t, work, "config", "user.email", "test@example.com")
+	runGit(t, work, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(work, "go.mod"), []byte("module example.com/gitsemvertest\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(work, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "add", "go.mod", "a.txt")
+	runGit(t, work, "commit", "-q", "-m", "c1")
+	runGit(t, work, "tag", "v1.0.0")
+	if err := os.Chdir(work); err != nil {
+		t.Fatal(err)
+	}
+
+	*flagGit = "git"
 	*flagOut = "test.out"
+	*flagName = ""
+	*flagDebug = false
+	*flagGoPackage = true
+	*flagNoFetch = true
+	*flagNoNewline = false
+	*flagIncPatch = false
+	*flagBranch = false
+	testMode = true
+
 	if code := mainfn(); code != 0 {
 		t.Fatalf("mainfn failed with code %d", code)
 	}
-	b, err := os.ReadFile("test.out")
+	b, err := os.ReadFile(filepath.Join(work, "test.out"))
 	if err == nil {
-		defer os.Remove("test.out")
 		s := string(b)
-		if !strings.Contains(s, "package gitsemver") || !strings.Contains(s, "PkgName = \"gitsemver\"") {
+		if !strings.Contains(s, "package gitsemvertest") || !strings.Contains(s, "PkgName = \"gitsemvertest\"") {
 			t.Error(s)
 		}
 	} else {
@@ -222,15 +267,56 @@ func TestMainFn(t *testing.T) {
 
 func TestMainFnBranch(t *testing.T) {
 	flag.Parse()
-	*flagBranch = true
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	origGit, origOut, origName := *flagGit, *flagOut, *flagName
+	origDebug, origGoPackage := *flagDebug, *flagGoPackage
+	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
+	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origTestMode := testMode
+	defer func() {
+		*flagGit, *flagOut, *flagName = origGit, origOut, origName
+		*flagDebug, *flagGoPackage = origDebug, origGoPackage
+		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
+		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		testMode = origTestMode
+	}()
+
+	work := t.TempDir()
+	runGit(t, work, "init", "-q")
+	runGit(t, work, "branch", "-M", "main")
+	runGit(t, work, "config", "user.email", "test@example.com")
+	runGit(t, work, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(work, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "add", "a.txt")
+	runGit(t, work, "commit", "-q", "-m", "c1")
+	runGit(t, work, "tag", "v1.0.0")
+	if err := os.Chdir(work); err != nil {
+		t.Fatal(err)
+	}
+
+	*flagGit = "git"
 	*flagOut = "test.out"
+	*flagName = ""
+	*flagDebug = false
+	*flagGoPackage = false
+	*flagNoFetch = true
+	*flagNoNewline = false
 	*flagIncPatch = true
+	*flagBranch = true
+	testMode = true
+
 	if code := mainfn(); code != 0 {
 		t.Fatalf("mainfn failed with code %d", code)
 	}
-	b, err := os.ReadFile("test.out")
+	b, err := os.ReadFile(filepath.Join(work, "test.out"))
 	if err == nil {
-		defer os.Remove("test.out")
 		s := string(b)
 		if !strings.Contains(s, "main") {
 			t.Error(s)
