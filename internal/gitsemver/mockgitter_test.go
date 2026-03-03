@@ -29,10 +29,11 @@ var mockHistory = []gitsemver.GitTag{
 }
 
 type MockGitter struct {
-	branch   string
-	treehash string
-	TopTag   string
-	dirty    bool
+	branch        string
+	treehash      string
+	TopTag        string
+	dirty         bool
+	closestTagErr error
 }
 
 func (mg *MockGitter) Exec(args ...string) (output []byte, err error) {
@@ -83,6 +84,9 @@ func (mg *MockGitter) GetHashes(repo, tag string) (commit, tree string, err erro
 }
 
 func (mg *MockGitter) GetClosestTag(repo, from string) (tag string, err error) {
+	if mg.closestTagErr != nil {
+		return "", mg.closestTagErr
+	}
 	if repo == "." {
 		if from == "HEAD" {
 			from = mg.treehash

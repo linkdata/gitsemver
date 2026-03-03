@@ -2,6 +2,7 @@ package gitsemver_test
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
@@ -127,6 +128,18 @@ func Test_VersionStringer_GetTag(t *testing.T) {
 	isEqual(t, "v6.0.0", tag)
 	isEqual(t, false, sametree)
 	isEqual(t, err, nil)
+}
+
+func Test_VersionStringer_GetTag_PropagatesClosestTagError(t *testing.T) {
+	env := MockEnvironment{}
+	expectedErr := errors.New("closest tag lookup failed")
+	git := &MockGitter{closestTagErr: expectedErr}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
+
+	_, _, err := vs.GetTag(".")
+	if !errors.Is(err, expectedErr) {
+		t.Fatalf("expected closest tag error, got %v", err)
+	}
 }
 
 func Test_VersionStringer_GetBranch(t *testing.T) {

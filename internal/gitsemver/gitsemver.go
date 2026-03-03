@@ -141,7 +141,7 @@ func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) {
 			}
 		}
 		var closeToHEAD string
-		if closeToHEAD, _ = vs.Git.GetClosestTag(repo, "HEAD"); closeToHEAD != "" {
+		if closeToHEAD, err = vs.Git.GetClosestTag(repo, "HEAD"); err == nil && closeToHEAD != "" {
 			var found GitTag
 			if found, err = vs.getTreeHash(repo, closeToHEAD); err == nil {
 				for _, gt := range vs.tags {
