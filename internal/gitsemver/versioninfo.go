@@ -37,8 +37,10 @@ func findPackageName(repo, s string) (pkgName string, err error) {
 		if b, err = os.ReadFile(filepath.Join(repo, "go.mod")); /*#nosec G304*/ err == nil {
 			for _, s := range strings.Split(string(b), "\n") {
 				s = strings.TrimSpace(s)
-				if strings.HasPrefix(s, "module") {
-					pkgName = LastName(s)
+				fields := strings.Fields(s)
+				if len(fields) >= 2 && fields[0] == "module" {
+					pkgName = LastName(fields[1])
+					break
 				}
 			}
 		}

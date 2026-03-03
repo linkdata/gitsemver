@@ -1,6 +1,8 @@
 package gitsemver_test
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -24,6 +26,22 @@ func Test_VersionInfo_GoPackage(t *testing.T) {
 	}
 	if txt != "" {
 		t.Error(txt)
+	}
+}
+
+func Test_VersionInfo_GoPackage_ModuleWithInlineComment(t *testing.T) {
+	repo := t.TempDir()
+	goMod := "module example.com/my_pkg // inline comment\n\ngo 1.25\n"
+	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte(goMod), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	vi := &gitsemver.VersionInfo{Tag: "v1.2.3", Branch: "mybranch", Build: "456"}
+	txt, err := vi.GoPackage(repo, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(txt, "package my_pkg") || !strings.Contains(txt, "const PkgName = \"my_pkg\"") {
+		t.Fatalf("unexpected generated package text: %s", txt)
 	}
 }
 
