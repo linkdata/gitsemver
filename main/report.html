@@ -63,11 +63,13 @@
 				
 				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitsemver.go (98.1%)</option>
 				
-				<option value="file4">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (98.5%)</option>
+				<option value="file4">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (100.0%)</option>
 				
-				<option value="file5">github.com/linkdata/gitsemver/internal/gitsemver/versioninfo.go (100.0%)</option>
+				<option value="file5">github.com/linkdata/gitsemver/internal/gitsemver/semver.go (100.0%)</option>
 				
-				<option value="file6">github.com/linkdata/gitsemver/main.go (100.0%)</option>
+				<option value="file6">github.com/linkdata/gitsemver/internal/gitsemver/versioninfo.go (100.0%)</option>
+				
+				<option value="file7">github.com/linkdata/gitsemver/main.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -330,7 +332,7 @@ func (vs *GitSemVer) examineTags(repo string) (err error) <span class="cov8" tit
 // that is true if the tree hashes match and there are no uncommitted changes.
 func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) <span class="cov8" title="1">{
         if ciTag := strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")); ciTag != "" </span><span class="cov8" title="1">{
-                if reMatchSemver.MatchString(ciTag) </span><span class="cov8" title="1">{
+                if isSemverTag(ciTag) </span><span class="cov8" title="1">{
                         return ciTag, true, nil
                 }</span>
         }
@@ -452,7 +454,6 @@ import (
         "os"
         "os/exec"
         "path/filepath"
-        "regexp"
         "runtime"
         "sort"
         "strconv"
@@ -604,69 +605,20 @@ func (dg DefaultGitter) CheckGitRepo(dir string) (repo string, err error) <span 
         <span class="cov8" title="1">return</span>
 }
 
-// Intentionally accepts partial numeric tags (v1, v1.2, v1.2.3),
-// with or without a leading "v".
-var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
-
-func normalizeNumericString(s string) string <span class="cov8" title="1">{
-        s = strings.TrimLeft(s, "0")
-        if s == "" </span><span class="cov8" title="1">{
-                return "0"
-        }</span>
-        <span class="cov8" title="1">return s</span>
-}
-
-func compareNumericStrings(a, b string) int <span class="cov8" title="1">{
-        a = normalizeNumericString(a)
-        b = normalizeNumericString(b)
-        if len(a) != len(b) </span><span class="cov8" title="1">{
-                if len(a) &gt; len(b) </span><span class="cov0" title="0">{
-                        return 1
-                }</span>
-                <span class="cov8" title="1">return -1</span>
-        }
-        <span class="cov8" title="1">if a == b </span><span class="cov8" title="1">{
-                return 0
-        }</span>
-        <span class="cov8" title="1">if a &gt; b </span><span class="cov8" title="1">{
-                return 1
-        }</span>
-        <span class="cov8" title="1">return -1</span>
-}
-
-func semverPart(tag string, index int) string <span class="cov8" title="1">{
-        core := strings.TrimPrefix(tag, "v")
-        parts := strings.Split(core, ".")
-        if index &gt;= 0 &amp;&amp; index &lt; len(parts) </span><span class="cov8" title="1">{
-                return parts[index]
-        }</span>
-        <span class="cov0" title="0">return "0"</span>
-}
-
-func semverGreater(leftTag, rightTag string) bool <span class="cov8" title="1">{
-        for idx := 0; idx &lt; 3; idx++ </span><span class="cov8" title="1">{
-                cmp := compareNumericStrings(semverPart(leftTag, idx), semverPart(rightTag, idx))
-                if cmp != 0 </span><span class="cov8" title="1">{
-                        return cmp &gt; 0
-                }</span>
-        }
-        <span class="cov0" title="0">return false</span>
-}
-
 // GetTags returns all tags, sorted by version descending.
 // The latest tag is the first in the list.
 func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) <span class="cov8" title="1">{
         var b []byte
         if b, err = dg.Exec("-C", repo, "tag", "--sort=-v:refname", "--list", "v[0-9]*", "[0-9]*"); len(b) &gt; 0 /* #nosec G204 */ </span><span class="cov8" title="1">{
                 for _, tag := range strings.Split(string(b), "\n") </span><span class="cov8" title="1">{
-                        if tag = strings.TrimSpace(tag); tag != "" &amp;&amp; reMatchSemver.MatchString(tag) </span><span class="cov8" title="1">{
+                        if tag = strings.TrimSpace(tag); tag != "" &amp;&amp; isSemverTag(tag) </span><span class="cov8" title="1">{
                                 tags = append(tags, tag)
                         }</span>
                 }
                 // Git's multi-pattern listing can interleave v-prefixed and non-prefixed
                 // tags in a way that is not globally version-sorted. Normalize here.
                 <span class="cov8" title="1">sort.SliceStable(tags, func(i, j int) bool </span><span class="cov8" title="1">{
-                        return semverGreater(tags[i], tags[j])
+                        return semverTagGreater(tags[i], tags[j])
                 }</span>)
         }
         <span class="cov8" title="1">return</span>
@@ -754,7 +706,7 @@ func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string, err erro
                                 var b []byte
                                 if b, err = dg.Exec(args...); err == nil </span><span class="cov8" title="1">{
                                         candidate := strings.TrimSpace(string(b))
-                                        if candidate == "" || reMatchSemver.MatchString(candidate) </span><span class="cov8" title="1">{
+                                        if candidate == "" || isSemverTag(candidate) </span><span class="cov8" title="1">{
                                                 tag = candidate
                                                 return
                                         }</span>
@@ -887,6 +839,42 @@ func (dg DefaultGitter) CleanStatus(repo string, includeUntracked bool) (yes boo
 		<pre class="file" id="file5" style="display: none">package gitsemver
 
 import (
+        "strings"
+
+        xmodsemver "golang.org/x/mod/semver"
+)
+
+// canonicalSemverTag converts relaxed git tag forms like "1", "1.2", "v1.2.3"
+// into strict canonical semver for validation/comparison.
+func canonicalSemverTag(tag string) (canonical string, ok bool) <span class="cov8" title="1">{
+        if tag = strings.TrimSpace(tag); tag != "" </span><span class="cov8" title="1">{
+                if !strings.HasPrefix(tag, "v") </span><span class="cov8" title="1">{
+                        tag = "v" + tag
+                }</span>
+                // Git tags are intentionally limited to numeric MAJOR[.MINOR][.PATCH] forms.
+                <span class="cov8" title="1">if xmodsemver.Prerelease(tag) == "" &amp;&amp; xmodsemver.Build(tag) == "" </span><span class="cov8" title="1">{
+                        canonical = xmodsemver.Canonical(tag)
+                }</span>
+        }
+        <span class="cov8" title="1">ok = canonical != ""
+        return</span>
+}
+
+func isSemverTag(tag string) bool <span class="cov8" title="1">{
+        _, ok := canonicalSemverTag(tag)
+        return ok
+}</span>
+
+func semverTagGreater(leftTag, rightTag string) bool <span class="cov8" title="1">{
+        leftCanonical, _ := canonicalSemverTag(leftTag)
+        rightCanonical, _ := canonicalSemverTag(rightTag)
+        return xmodsemver.Compare(leftCanonical, rightCanonical) &gt; 0
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package gitsemver
+
+import (
         "fmt"
         "go/token"
         "os"
@@ -973,13 +961,13 @@ func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) 
 
 func (vi *VersionInfo) HasTag(tag string) bool <span class="cov8" title="1">{
         tagCore := strings.TrimPrefix(tag, "v")
-        tagIsSemver := reMatchSemver.MatchString(tag)
+        tagIsSemver := isSemverTag(tag)
         for _, gt := range vi.Tags </span><span class="cov8" title="1">{
                 if gt.Tag == tag </span><span class="cov8" title="1">{
                         return true
                 }</span>
                 // Treat v-prefixed and non-prefixed semver tags as equivalent.
-                <span class="cov8" title="1">if tagIsSemver &amp;&amp; reMatchSemver.MatchString(gt.Tag) &amp;&amp; strings.TrimPrefix(gt.Tag, "v") == tagCore </span><span class="cov8" title="1">{
+                <span class="cov8" title="1">if tagIsSemver &amp;&amp; isSemverTag(gt.Tag) &amp;&amp; strings.TrimPrefix(gt.Tag, "v") == tagCore </span><span class="cov8" title="1">{
                         return true
                 }</span>
         }
@@ -991,11 +979,11 @@ func (vi *VersionInfo) IncPatch() string <span class="cov8" title="1">{
         baseTag := vi.Tag
         // Ignore prerelease/build suffixes when incrementing the patch level.
         if idx := strings.IndexAny(baseTag, "-+"); idx &gt; -1 </span><span class="cov8" title="1">{
-                if core := baseTag[:idx]; reMatchSemver.MatchString(core) </span><span class="cov8" title="1">{
+                if core := baseTag[:idx]; isSemverTag(core) </span><span class="cov8" title="1">{
                         baseTag = core
                 }</span>
         }
-        <span class="cov8" title="1">if !reMatchSemver.MatchString(baseTag) </span><span class="cov8" title="1">{
+        <span class="cov8" title="1">if !isSemverTag(baseTag) </span><span class="cov8" title="1">{
                 vi.SameTree = true
                 return vi.Tag
         }</span>
@@ -1055,7 +1043,7 @@ func (vi *VersionInfo) Version() (version string) <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file6" style="display: none">package main
+		<pre class="file" id="file7" style="display: none">package main
 
 import (
         "errors"
