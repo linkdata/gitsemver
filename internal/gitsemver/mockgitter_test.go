@@ -83,6 +83,23 @@ func (mg *MockGitter) GetHashes(repo, tag string) (commit, tree string, err erro
 	return "", "", nil
 }
 
+func (mg *MockGitter) GetHashesBatch(repo string, tags []string) (hashes []gitsemver.GitTag, err error) {
+	for _, tag := range tags {
+		commit, tree, e := mg.GetHashes(repo, tag)
+		if e != nil {
+			return nil, e
+		}
+		if commit != "" && tree != "" {
+			hashes = append(hashes, gitsemver.GitTag{
+				Tag:    tag,
+				Commit: commit,
+				Tree:   tree,
+			})
+		}
+	}
+	return
+}
+
 func (mg *MockGitter) GetClosestTag(repo, from string) (tag string, err error) {
 	if mg.closestTagErr != nil {
 		return "", mg.closestTagErr

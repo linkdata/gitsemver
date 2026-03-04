@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
@@ -42,6 +44,16 @@ func isTrue(t *testing.T, v bool) {
 	if !v {
 		t.Error(v)
 	}
+}
+
+type MockBatchErrorGitter struct {
+	*MockGitter
+	batchCalls int
+}
+
+func (mg *MockBatchErrorGitter) GetHashesBatch(repo string, tags []string) (hashes []gitsemver.GitTag, err error) {
+	mg.batchCalls++
+	return nil, errors.New("batch failed")
 }
 
 func Test_VersionStringer_IsEnvTrue(t *testing.T) {
@@ -142,6 +154,20 @@ func Test_VersionStringer_GetTag_PropagatesClosestTagError(t *testing.T) {
 	if !errors.Is(err, expectedErr) {
 		t.Fatalf("expected closest tag error, got %v", err)
 	}
+}
+
+func Test_VersionStringer_GetTag_BatchFailureFallsBackToPerTagLookup(t *testing.T) {
+	env := MockEnvironment{}
+	git := &MockBatchErrorGitter{MockGitter: &MockGitter{}}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
+
+	tag, sametree, err := vs.GetTag(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	isEqual(t, "v6.0.0", tag)
+	isEqual(t, false, sametree)
+	isEqual(t, 1, git.batchCalls)
 }
 
 func Test_VersionStringer_GetBranch(t *testing.T) {
@@ -438,5 +464,43 @@ func Test_VersionStringer_GetTag_PicksHighestMixedPrefixTagOnSameTree(t *testing
 	}
 	if !sameTree {
 		t.Fatalf("expected sameTree true, got false")
+	}
+}
+
+func Test_VersionStringer_GetTag_BatchesTagHashLookup(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+
+	for i := 1; i <= 10; i++ {
+		runGit(t, repo, nil, "tag", "v0.0."+strconv.Itoa(i))
+	}
+
+	var buf bytes.Buffer
+	vs, err := gitsemver.New("git", &buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag, sameTree, err := vs.GetTag(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tag != "v0.0.10" {
+		t.Fatalf("expected highest tag v0.0.10, got %q", tag)
+	}
+	if !sameTree {
+		t.Fatalf("expected sameTree true, got false")
+	}
+
+	revParseCalls := 0
+	for _, line := range strings.Split(buf.String(), "\n") {
+		if strings.Contains(line, " rev-parse ") {
+			revParseCalls++
+		}
+	}
+	if revParseCalls != 2 {
+		t.Fatalf("expected 2 rev-parse calls (HEAD + batch), got %d\nlog:\n%s", revParseCalls, buf.String())
 	}
 }

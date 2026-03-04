@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -274,6 +275,87 @@ func Test_DefaultGitter_GetTreeHash(t *testing.T) {
 	}
 	if x, y, err := dg.GetHashes(".", "v0.0.2"); x != "f9a1633a72ca04515d517a830a2e2835a98767f6" || y != "57562d5fc36ef21a9785fb6afd128e87ab302fae" {
 		t.Error(x, y, err)
+	}
+}
+
+func Test_DefaultGitter_GetHashesBatch(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	runGit(t, repo, nil, "tag", "v1.0.0")
+	commitAt(t, repo, "a.txt", "a\nb\n", "c2", "2020-01-02T00:00:00Z")
+	runGit(t, repo, nil, "tag", "v2.0.0")
+
+	g, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dg, ok := g.(gitsemver.DefaultGitter)
+	if !ok {
+		t.Fatalf("expected DefaultGitter, got %T", g)
+	}
+	tags := []string{"v2.0.0", "v1.0.0"}
+	batched, err := dg.GetHashesBatch(repo, tags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(batched) != len(tags) {
+		t.Fatalf("expected %d hashes, got %d", len(tags), len(batched))
+	}
+	for i, tag := range tags {
+		commit, tree, err := dg.GetHashes(repo, tag)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if batched[i].Tag != tag || batched[i].Commit != commit || batched[i].Tree != tree {
+			t.Fatalf("unexpected hashes for %q: %+v", tag, batched[i])
+		}
+	}
+}
+
+func Test_DefaultGitter_GetHashesBatch_ChunksAndPreservesOrder(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+
+	const count = 130
+	tags := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		tag := "t" + strconv.Itoa(i)
+		tags = append(tags, tag)
+		runGit(t, repo, nil, "tag", tag)
+	}
+
+	g, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dg, ok := g.(gitsemver.DefaultGitter)
+	if !ok {
+		t.Fatalf("expected DefaultGitter, got %T", g)
+	}
+	wantCommit, wantTree, err := dg.GetHashes(repo, tags[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	batched, err := dg.GetHashesBatch(repo, tags)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(batched) != len(tags) {
+		t.Fatalf("expected %d hashes, got %d", len(tags), len(batched))
+	}
+	for i := range tags {
+		if batched[i].Tag != tags[i] {
+			t.Fatalf("expected tag %q at index %d, got %q", tags[i], i, batched[i].Tag)
+		}
+		if batched[i].Commit != wantCommit || batched[i].Tree != wantTree {
+			t.Fatalf("unexpected hashes for %q: %+v", tags[i], batched[i])
+		}
 	}
 }
 

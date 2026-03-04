@@ -26,6 +26,8 @@ type Gitter interface {
 	GetCurrentTreeHash(repo string) (string, error)
 	// GetHashes returns the commit and tree hashes for the given tag.
 	GetHashes(repo, tag string) (commit string, tree string, err error)
+	// GetHashesBatch returns commit/tree hashes for many tags.
+	GetHashesBatch(repo string, tags []string) (hashes []GitTag, err error)
 	// GetClosestTag returns the closest semver tag for the given commit hash.
 	GetClosestTag(repo, commit string) (tag string, err error)
 	// GetBranch returns the current branch in the repository or an empty string.
@@ -53,6 +55,8 @@ type DefaultGitter struct {
 	Git      string
 	DebugOut io.Writer
 }
+
+const revParseBatchTagCount = 32
 
 func MaybeSync(w io.Writer) {
 	if syncer, ok := w.(interface{ Sync() error }); ok {
@@ -240,6 +244,40 @@ func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string, err er
 		hashes := strings.Split(strings.TrimSpace(string(b)), "\n")
 		if len(hashes) == 2 {
 			commit, tree = hashes[0], hashes[1]
+		}
+	}
+	return
+}
+
+// GetHashesBatch returns commit/tree hashes for many tags using chunked
+// rev-parse calls to reduce process startup overhead.
+func (dg DefaultGitter) GetHashesBatch(repo string, tags []string) (hashes []GitTag, err error) {
+	hashes = make([]GitTag, 0, len(tags))
+	for i := 0; i < len(tags); i += revParseBatchTagCount {
+		end := min(i+revParseBatchTagCount, len(tags))
+		chunk := tags[i:end]
+		args := make([]string, 0, 3+len(chunk)*2)
+		args = append(args, "-C", repo, "rev-parse")
+		for _, tag := range chunk {
+			args = append(args, tag, tag+"^{tree}")
+		}
+		var b []byte
+		if b, err = dg.Exec(args...); err == nil {
+			lines := strings.Fields(string(b))
+			err = NewErrUnexpectedRevParseOutput(len(chunk), len(lines))
+			if len(lines) == len(chunk)*2 {
+				err = nil
+				for idx, tag := range chunk {
+					commit, tree := lines[idx*2], lines[idx*2+1]
+					if commit != "" && tree != "" {
+						hashes = append(hashes, GitTag{
+							Tag:    tag,
+							Commit: commit,
+							Tree:   tree,
+						})
+					}
+				}
+			}
 		}
 	}
 	return

@@ -83,6 +83,16 @@ func (vs *GitSemVer) Debug(f string, args ...any) {
 	}
 }
 
+func (vs *GitSemVer) cacheTag(gt GitTag) {
+	for i := range vs.tags {
+		if vs.tags[i].Tag == gt.Tag {
+			vs.tags[i] = gt
+			return
+		}
+	}
+	vs.tags = append(vs.tags, gt)
+}
+
 func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag, err error) {
 	for i := range vs.tags {
 		if vs.tags[i].Tag == tag {
@@ -94,7 +104,7 @@ func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag, err error) {
 		gt.Tag = tag
 		gt.Commit = commit
 		gt.Tree = tree
-		vs.tags = append(vs.tags, gt)
+		vs.cacheTag(gt)
 	}
 	return
 }
@@ -107,6 +117,13 @@ func (vs *GitSemVer) examineTags(repo string) (err error) {
 			vs.Debug("treehash %s: HEAD (clean: %v)\n", headHashes.Tree, vs.cleanstatus)
 			var tags []string
 			if tags, err = vs.Git.GetTags(repo); err == nil {
+				if batched, batchErr := vs.Git.GetHashesBatch(repo, tags); batchErr == nil {
+					for _, gt := range batched {
+						vs.cacheTag(gt)
+					}
+				} else {
+					vs.Debug("treehash batch lookup failed, falling back to per-tag: %v\n", batchErr)
+				}
 				for _, testtag := range tags {
 					var tagtreehashes GitTag
 					if tagtreehashes, err = vs.getTreeHash(repo, testtag); err == nil {
