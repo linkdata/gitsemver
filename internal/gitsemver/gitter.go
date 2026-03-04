@@ -56,7 +56,7 @@ type DefaultGitter struct {
 	DebugOut io.Writer
 }
 
-const revParseBatchTagCount = 32
+const revParseBatchTagCount = 128
 
 func MaybeSync(w io.Writer) {
 	if syncer, ok := w.(interface{ Sync() error }); ok {
