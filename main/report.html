@@ -59,13 +59,15 @@
 				
 				<option value="file1">github.com/linkdata/gitsemver/internal/gitsemver/errgitexec.go (100.0%)</option>
 				
-				<option value="file2">github.com/linkdata/gitsemver/internal/gitsemver/gitsemver.go (100.0%)</option>
+				<option value="file2">github.com/linkdata/gitsemver/internal/gitsemver/errrevparse.go (100.0%)</option>
 				
-				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (98.4%)</option>
+				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitsemver.go (98.1%)</option>
 				
-				<option value="file4">github.com/linkdata/gitsemver/internal/gitsemver/versioninfo.go (100.0%)</option>
+				<option value="file4">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (98.5%)</option>
 				
-				<option value="file5">github.com/linkdata/gitsemver/main.go (100.0%)</option>
+				<option value="file5">github.com/linkdata/gitsemver/internal/gitsemver/versioninfo.go (100.0%)</option>
+				
+				<option value="file6">github.com/linkdata/gitsemver/main.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -148,6 +150,39 @@ func (err *errGitExec) Unwrap() error <span class="cov8" title="1">{
 </pre>
 		
 		<pre class="file" id="file2" style="display: none">package gitsemver
+
+import "fmt"
+
+type errUnexpectedRevParseOutput struct {
+        expectedTags int
+        gotLines     int
+}
+
+// ErrUnexpectedRevParseOutput classifies errors where rev-parse output line
+// count does not match the requested tag/tree pairs.
+var ErrUnexpectedRevParseOutput = &amp;errUnexpectedRevParseOutput{}
+
+func NewErrUnexpectedRevParseOutput(expectedTags, gotLines int) error <span class="cov8" title="1">{
+        return &amp;errUnexpectedRevParseOutput{
+                expectedTags: expectedTags,
+                gotLines:     gotLines,
+        }
+}</span>
+
+func (err *errUnexpectedRevParseOutput) Error() string <span class="cov8" title="1">{
+        return fmt.Sprintf(
+                "unexpected rev-parse output for %d tags: got %d lines",
+                err.expectedTags, err.gotLines,
+        )
+}</span>
+
+func (err *errUnexpectedRevParseOutput) Is(other error) bool <span class="cov8" title="1">{
+        return other == ErrUnexpectedRevParseOutput
+}</span>
+
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package gitsemver
 
 import (
         "errors"
@@ -232,6 +267,16 @@ func (vs *GitSemVer) Debug(f string, args ...any) <span class="cov8" title="1">{
         }</span>
 }
 
+func (vs *GitSemVer) cacheTag(gt GitTag) <span class="cov8" title="1">{
+        for i := range vs.tags </span><span class="cov8" title="1">{
+                if vs.tags[i].Tag == gt.Tag </span><span class="cov0" title="0">{
+                        vs.tags[i] = gt
+                        return
+                }</span>
+        }
+        <span class="cov8" title="1">vs.tags = append(vs.tags, gt)</span>
+}
+
 func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag, err error) <span class="cov8" title="1">{
         for i := range vs.tags </span><span class="cov8" title="1">{
                 if vs.tags[i].Tag == tag </span><span class="cov8" title="1">{
@@ -243,7 +288,7 @@ func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag, err error) <span 
                 gt.Tag = tag
                 gt.Commit = commit
                 gt.Tree = tree
-                vs.tags = append(vs.tags, gt)
+                vs.cacheTag(gt)
         }</span>
         <span class="cov8" title="1">return</span>
 }
@@ -256,7 +301,14 @@ func (vs *GitSemVer) examineTags(repo string) (err error) <span class="cov8" tit
                         vs.Debug("treehash %s: HEAD (clean: %v)\n", headHashes.Tree, vs.cleanstatus)
                         var tags []string
                         if tags, err = vs.Git.GetTags(repo); err == nil </span><span class="cov8" title="1">{
-                                for _, testtag := range tags </span><span class="cov8" title="1">{
+                                if batched, batchErr := vs.Git.GetHashesBatch(repo, tags); batchErr == nil </span><span class="cov8" title="1">{
+                                        for _, gt := range batched </span><span class="cov8" title="1">{
+                                                vs.cacheTag(gt)
+                                        }</span>
+                                } else<span class="cov8" title="1"> {
+                                        vs.Debug("treehash batch lookup failed, falling back to per-tag: %v\n", batchErr)
+                                }</span>
+                                <span class="cov8" title="1">for _, testtag := range tags </span><span class="cov8" title="1">{
                                         var tagtreehashes GitTag
                                         if tagtreehashes, err = vs.getTreeHash(repo, testtag); err == nil </span><span class="cov8" title="1">{
                                                 if tagtreehashes.Tree != "" </span><span class="cov8" title="1">{
@@ -390,7 +442,7 @@ func (vs *GitSemVer) GetVersion(repo string) (vi VersionInfo, err error) <span c
 }
 </pre>
 		
-		<pre class="file" id="file3" style="display: none">package gitsemver
+		<pre class="file" id="file4" style="display: none">package gitsemver
 
 import (
         "bytes"
@@ -418,6 +470,8 @@ type Gitter interface {
         GetCurrentTreeHash(repo string) (string, error)
         // GetHashes returns the commit and tree hashes for the given tag.
         GetHashes(repo, tag string) (commit string, tree string, err error)
+        // GetHashesBatch returns commit/tree hashes for many tags.
+        GetHashesBatch(repo string, tags []string) (hashes []GitTag, err error)
         // GetClosestTag returns the closest semver tag for the given commit hash.
         GetClosestTag(repo, commit string) (tag string, err error)
         // GetBranch returns the current branch in the repository or an empty string.
@@ -445,6 +499,8 @@ type DefaultGitter struct {
         Git      string
         DebugOut io.Writer
 }
+
+const revParseBatchTagCount = 32
 
 func MaybeSync(w io.Writer) <span class="cov8" title="1">{
         if syncer, ok := w.(interface{ Sync() error }); ok </span><span class="cov8" title="1">{
@@ -637,6 +693,40 @@ func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string, err er
         <span class="cov8" title="1">return</span>
 }
 
+// GetHashesBatch returns commit/tree hashes for many tags using chunked
+// rev-parse calls to reduce process startup overhead.
+func (dg DefaultGitter) GetHashesBatch(repo string, tags []string) (hashes []GitTag, err error) <span class="cov8" title="1">{
+        hashes = make([]GitTag, 0, len(tags))
+        for i := 0; i &lt; len(tags); i += revParseBatchTagCount </span><span class="cov8" title="1">{
+                end := min(i+revParseBatchTagCount, len(tags))
+                chunk := tags[i:end]
+                args := make([]string, 0, 3+len(chunk)*2)
+                args = append(args, "-C", repo, "rev-parse")
+                for _, tag := range chunk </span><span class="cov8" title="1">{
+                        args = append(args, tag, tag+"^{tree}")
+                }</span>
+                <span class="cov8" title="1">var b []byte
+                if b, err = dg.Exec(args...); err == nil </span><span class="cov8" title="1">{
+                        lines := strings.Fields(string(b))
+                        err = NewErrUnexpectedRevParseOutput(len(chunk), len(lines))
+                        if len(lines) == len(chunk)*2 </span><span class="cov8" title="1">{
+                                err = nil
+                                for idx, tag := range chunk </span><span class="cov8" title="1">{
+                                        commit, tree := lines[idx*2], lines[idx*2+1]
+                                        if commit != "" &amp;&amp; tree != "" </span><span class="cov8" title="1">{
+                                                hashes = append(hashes, GitTag{
+                                                        Tag:    tag,
+                                                        Commit: commit,
+                                                        Tree:   tree,
+                                                })
+                                        }</span>
+                                }
+                        }
+                }
+        }
+        <span class="cov8" title="1">return</span>
+}
+
 // GetClosestTag returns the closest semver tag for the given commit hash.
 func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string, err error) <span class="cov8" title="1">{
         var listed []byte
@@ -794,7 +884,7 @@ func (dg DefaultGitter) CleanStatus(repo string, includeUntracked bool) (yes boo
 }
 </pre>
 		
-		<pre class="file" id="file4" style="display: none">package gitsemver
+		<pre class="file" id="file5" style="display: none">package gitsemver
 
 import (
         "fmt"
@@ -965,7 +1055,7 @@ func (vi *VersionInfo) Version() (version string) <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file5" style="display: none">package main
+		<pre class="file" id="file6" style="display: none">package main
 
 import (
         "errors"
