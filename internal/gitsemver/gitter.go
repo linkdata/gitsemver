@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -160,69 +159,20 @@ func (dg DefaultGitter) CheckGitRepo(dir string) (repo string, err error) {
 	return
 }
 
-// Intentionally accepts partial numeric tags (v1, v1.2, v1.2.3),
-// with or without a leading "v".
-var reMatchSemver = regexp.MustCompile(`^v?[0-9]+(?:\.[0-9]+)?(?:\.[0-9]+)?$`)
-
-func normalizeNumericString(s string) string {
-	s = strings.TrimLeft(s, "0")
-	if s == "" {
-		return "0"
-	}
-	return s
-}
-
-func compareNumericStrings(a, b string) int {
-	a = normalizeNumericString(a)
-	b = normalizeNumericString(b)
-	if len(a) != len(b) {
-		if len(a) > len(b) {
-			return 1
-		}
-		return -1
-	}
-	if a == b {
-		return 0
-	}
-	if a > b {
-		return 1
-	}
-	return -1
-}
-
-func semverPart(tag string, index int) string {
-	core := strings.TrimPrefix(tag, "v")
-	parts := strings.Split(core, ".")
-	if index >= 0 && index < len(parts) {
-		return parts[index]
-	}
-	return "0"
-}
-
-func semverGreater(leftTag, rightTag string) bool {
-	for idx := 0; idx < 3; idx++ {
-		cmp := compareNumericStrings(semverPart(leftTag, idx), semverPart(rightTag, idx))
-		if cmp != 0 {
-			return cmp > 0
-		}
-	}
-	return false
-}
-
 // GetTags returns all tags, sorted by version descending.
 // The latest tag is the first in the list.
 func (dg DefaultGitter) GetTags(repo string) (tags []string, err error) {
 	var b []byte
 	if b, err = dg.Exec("-C", repo, "tag", "--sort=-v:refname", "--list", "v[0-9]*", "[0-9]*"); len(b) > 0 /* #nosec G204 */ {
 		for _, tag := range strings.Split(string(b), "\n") {
-			if tag = strings.TrimSpace(tag); tag != "" && reMatchSemver.MatchString(tag) {
+			if tag = strings.TrimSpace(tag); tag != "" && isSemverTag(tag) {
 				tags = append(tags, tag)
 			}
 		}
 		// Git's multi-pattern listing can interleave v-prefixed and non-prefixed
 		// tags in a way that is not globally version-sorted. Normalize here.
 		sort.SliceStable(tags, func(i, j int) bool {
-			return semverGreater(tags[i], tags[j])
+			return semverTagGreater(tags[i], tags[j])
 		})
 	}
 	return
@@ -310,7 +260,7 @@ func (dg DefaultGitter) GetClosestTag(repo, commit string) (tag string, err erro
 				var b []byte
 				if b, err = dg.Exec(args...); err == nil {
 					candidate := strings.TrimSpace(string(b))
-					if candidate == "" || reMatchSemver.MatchString(candidate) {
+					if candidate == "" || isSemverTag(candidate) {
 						tag = candidate
 						return
 					}

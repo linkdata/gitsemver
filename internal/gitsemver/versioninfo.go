@@ -87,13 +87,13 @@ func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) 
 
 func (vi *VersionInfo) HasTag(tag string) bool {
 	tagCore := strings.TrimPrefix(tag, "v")
-	tagIsSemver := reMatchSemver.MatchString(tag)
+	tagIsSemver := isSemverTag(tag)
 	for _, gt := range vi.Tags {
 		if gt.Tag == tag {
 			return true
 		}
 		// Treat v-prefixed and non-prefixed semver tags as equivalent.
-		if tagIsSemver && reMatchSemver.MatchString(gt.Tag) && strings.TrimPrefix(gt.Tag, "v") == tagCore {
+		if tagIsSemver && isSemverTag(gt.Tag) && strings.TrimPrefix(gt.Tag, "v") == tagCore {
 			return true
 		}
 	}
@@ -105,11 +105,11 @@ func (vi *VersionInfo) IncPatch() string {
 	baseTag := vi.Tag
 	// Ignore prerelease/build suffixes when incrementing the patch level.
 	if idx := strings.IndexAny(baseTag, "-+"); idx > -1 {
-		if core := baseTag[:idx]; reMatchSemver.MatchString(core) {
+		if core := baseTag[:idx]; isSemverTag(core) {
 			baseTag = core
 		}
 	}
-	if !reMatchSemver.MatchString(baseTag) {
+	if !isSemverTag(baseTag) {
 		vi.SameTree = true
 		return vi.Tag
 	}

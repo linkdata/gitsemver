@@ -146,7 +146,7 @@ func (vs *GitSemVer) examineTags(repo string) (err error) {
 // that is true if the tree hashes match and there are no uncommitted changes.
 func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) {
 	if ciTag := strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")); ciTag != "" {
-		if reMatchSemver.MatchString(ciTag) {
+		if isSemverTag(ciTag) {
 			return ciTag, true, nil
 		}
 	}
