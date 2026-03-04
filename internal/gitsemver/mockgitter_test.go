@@ -158,7 +158,7 @@ func (mg *MockGitter) DeleteRemoteTag(repo, tag string) (err error) {
 	return
 }
 
-func (mg *MockGitter) CleanStatus(repo string) (bool, error) {
+func (mg *MockGitter) CleanStatus(repo string, includeUntracked bool) (bool, error) {
 	return !mg.dirty, nil
 }
 

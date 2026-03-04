@@ -120,7 +120,7 @@ func mainfn() int {
 				if vi, err = vs.GetVersion(repoDir); err == nil {
 					if *flagIncPatch {
 						var clean bool
-						if clean, err = vs.Git.CleanStatus(repoDir); err == nil {
+						if clean, err = vs.Git.CleanStatus(repoDir, true); err == nil {
 							if !clean {
 								err = errors.New("cannot use -incpatch with uncommitted changes")
 							} else {

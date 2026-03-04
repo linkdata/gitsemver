@@ -44,8 +44,9 @@ type Gitter interface {
 	PushTag(repo, tag string) (err error)
 	// DeleteRemoteTag deletes the given tag from origin. Does nothing if tag is empty.
 	DeleteRemoteTag(repo, tag string) (err error)
-	// CleanStatus returns true if there are no uncommitted changes in the repo
-	CleanStatus(repo string) (yes bool, err error)
+	// CleanStatus returns true if there are no uncommitted changes in the repo.
+	// If includeUntracked is false, untracked files do not affect cleanliness.
+	CleanStatus(repo string, includeUntracked bool) (yes bool, err error)
 }
 
 type DefaultGitter struct {
@@ -384,9 +385,13 @@ func (dg DefaultGitter) DeleteRemoteTag(repo, tag string) (err error) {
 	return
 }
 
-func (dg DefaultGitter) CleanStatus(repo string) (yes bool, err error) {
+func (dg DefaultGitter) CleanStatus(repo string, includeUntracked bool) (yes bool, err error) {
 	var b []byte
-	if b, err = dg.Exec("-C", repo, "status", "--porcelain"); err == nil {
+	args := []string{"-C", repo, "status", "--porcelain"}
+	if !includeUntracked {
+		args = append(args, "--untracked-files=no")
+	}
+	if b, err = dg.Exec(args...); err == nil {
 		yes = len(b) == 0
 	}
 	return

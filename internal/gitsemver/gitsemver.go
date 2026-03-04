@@ -100,7 +100,8 @@ func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag, err error) {
 }
 
 func (vs *GitSemVer) examineTags(repo string) (err error) {
-	if vs.cleanstatus, err = vs.Git.CleanStatus(repo); err == nil {
+	// Version detection should ignore CI-generated untracked files.
+	if vs.cleanstatus, err = vs.Git.CleanStatus(repo, false); err == nil {
 		var headHashes GitTag
 		if headHashes, err = vs.getTreeHash(repo, "HEAD"); err == nil {
 			vs.Debug("treehash %s: HEAD (clean: %v)\n", headHashes.Tree, vs.cleanstatus)

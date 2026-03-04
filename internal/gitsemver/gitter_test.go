@@ -564,7 +564,7 @@ func Test_DefaultGitter_CleanStatus(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	isclean, err := dg.CleanStatus(".")
+	isclean, err := dg.CleanStatus(".", true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -578,7 +578,7 @@ func Test_DefaultGitter_CleanStatus(t *testing.T) {
 	}
 }
 
-func Test_DefaultGitter_CleanStatus_DetectsUntrackedFiles(t *testing.T) {
+func Test_DefaultGitter_CleanStatus_UntrackedToggle(t *testing.T) {
 	repo := t.TempDir()
 	runGit(t, repo, nil, "init", "-q")
 	runGit(t, repo, nil, "config", "user.email", "test@example.com")
@@ -592,12 +592,19 @@ func Test_DefaultGitter_CleanStatus_DetectsUntrackedFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clean, err := dg.CleanStatus(repo)
+	clean, err := dg.CleanStatus(repo, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if clean {
 		t.Fatal("expected untracked file to make status dirty")
+	}
+	clean, err = dg.CleanStatus(repo, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !clean {
+		t.Fatal("expected untracked file to be ignored when includeUntracked is false")
 	}
 }
 
