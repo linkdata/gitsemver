@@ -158,24 +158,22 @@ func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) {
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) {
 	// Pull request events expose the source branch as GITHUB_HEAD_REF.
 	// Prefer this so PR builds are not mistaken for base-branch releases.
-	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_HEAD_REF")); branchName != "" {
-		return
-	}
-	refName := strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME"))
-	if refName == "" {
-		// Fallback for contexts that only expose a base branch.
-		branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF"))
-		return
-	}
-	if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) != "tag" {
-		return refName, nil
-	}
-	var branches []string
-	if branches, err = vs.Git.GetBranchesFromTag(repo, refName); err == nil {
-		for _, candidate := range branches {
-			if vs.IsReleaseBranch(candidate) {
-				return candidate, nil
+	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_HEAD_REF")); branchName == "" {
+		if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" {
+			if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" {
+				var branches []string
+				if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil {
+					for _, branchName = range branches {
+						if vs.IsReleaseBranch(branchName) {
+							return
+						}
+					}
+				}
+				branchName = ""
 			}
+		} else {
+			// Fallback for contexts that only expose a base branch.
+			branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF"))
 		}
 	}
 	return
