@@ -180,21 +180,19 @@ func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error)
 }
 
 func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string, err error) {
-	if branchName = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_REF_NAME")); branchName == "" {
-		return
-	}
-	if strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")) != branchName {
-		return branchName, nil
-	}
-	var branches []string
-	if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil {
-		for _, candidate := range branches {
-			if vs.IsReleaseBranch(candidate) {
-				return candidate, nil
+	if branchName = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_REF_NAME")); branchName != "" {
+		if strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")) == branchName {
+			var branches []string
+			if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil {
+				for _, branchName = range branches {
+					if vs.IsReleaseBranch(branchName) {
+						return
+					}
+				}
 			}
+			branchName = ""
 		}
 	}
-	branchName = ""
 	return
 }
 
