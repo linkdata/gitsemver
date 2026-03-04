@@ -34,7 +34,7 @@ type Gitter interface {
 	GetBranchesFromTag(repo, tag string) (branches []string, err error)
 	// GetBuild returns the number of commits in the currently checked out branch as a string, or an empty string
 	GetBuild(repo string) (string, error)
-	// FetchTags calls "git fetch --tags"
+	// FetchTags calls "git fetch --tags". Uses the "--unshallow" option if needed.
 	FetchTags(repo string) error
 	// CreateTag creates a new lightweight tag. Does nothing if tag is empty.
 	CreateTag(repo, tag string) error
@@ -350,10 +350,14 @@ func (dg DefaultGitter) GetBuild(repo string) (buildnum string, err error) {
 }
 
 func (dg DefaultGitter) FetchTags(repo string) (err error) {
-	// If this is a shallow clone, attempt to unshallow as part of fetching tags.
-	// Ignore the expected error when the repository is already complete.
-	_, _ = dg.Exec("-C", repo, "fetch", "--unshallow", "--tags")
-	_, err = dg.Exec("-C", repo, "fetch", "--tags") /* #nosec G204 */
+	var b []byte
+	if b, err = dg.Exec("-C", repo, "rev-parse", "--is-shallow-repository"); err == nil {
+		args := []string{"-C", repo, "fetch", "--tags", "--unshallow"}
+		if strings.TrimSpace(string(b)) != "true" {
+			args = args[:len(args)-1]
+		}
+		_, err = dg.Exec(args...) /* #nosec G204 */
+	}
 	return
 }
 
