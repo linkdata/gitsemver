@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/linkdata/gitsemver/internal/gitsemver/gitsemver.go (100.0%)</option>
 				
-				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (98.3%)</option>
+				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (98.4%)</option>
 				
 				<option value="file4">github.com/linkdata/gitsemver/internal/gitsemver/versioninfo.go (100.0%)</option>
 				
@@ -307,46 +307,42 @@ func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) <sp
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) <span class="cov8" title="1">{
         // Pull request events expose the source branch as GITHUB_HEAD_REF.
         // Prefer this so PR builds are not mistaken for base-branch releases.
-        if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_HEAD_REF")); branchName != "" </span><span class="cov8" title="1">{
-                return
-        }</span>
-        <span class="cov8" title="1">refName := strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME"))
-        if refName == "" </span><span class="cov8" title="1">{
-                // Fallback for contexts that only expose a base branch.
-                branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF"))
-                return
-        }</span>
-        <span class="cov8" title="1">if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) != "tag" </span><span class="cov8" title="1">{
-                return refName, nil
-        }</span>
-        <span class="cov8" title="1">var branches []string
-        if branches, err = vs.Git.GetBranchesFromTag(repo, refName); err == nil </span><span class="cov8" title="1">{
-                for _, candidate := range branches </span><span class="cov8" title="1">{
-                        if vs.IsReleaseBranch(candidate) </span><span class="cov8" title="1">{
-                                return candidate, nil
-                        }</span>
-                }
+        if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_HEAD_REF")); branchName == "" </span><span class="cov8" title="1">{
+                if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" </span><span class="cov8" title="1">{
+                        if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" </span><span class="cov8" title="1">{
+                                var branches []string
+                                if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil </span><span class="cov8" title="1">{
+                                        for _, branchName = range branches </span><span class="cov8" title="1">{
+                                                if vs.IsReleaseBranch(branchName) </span><span class="cov8" title="1">{
+                                                        return
+                                                }</span>
+                                        }
+                                }
+                                <span class="cov8" title="1">branchName = ""</span>
+                        }
+                } else<span class="cov8" title="1"> {
+                        // Fallback for contexts that only expose a base branch.
+                        branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF"))
+                }</span>
         }
         <span class="cov8" title="1">return</span>
 }
 
 func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string, err error) <span class="cov8" title="1">{
-        if branchName = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_REF_NAME")); branchName == "" </span><span class="cov8" title="1">{
-                return
-        }</span>
-        <span class="cov8" title="1">if strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")) != branchName </span><span class="cov8" title="1">{
-                return branchName, nil
-        }</span>
-        <span class="cov8" title="1">var branches []string
-        if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil </span><span class="cov8" title="1">{
-                for _, candidate := range branches </span><span class="cov8" title="1">{
-                        if vs.IsReleaseBranch(candidate) </span><span class="cov8" title="1">{
-                                return candidate, nil
-                        }</span>
+        if branchName = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_REF_NAME")); branchName != "" </span><span class="cov8" title="1">{
+                if strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")) == branchName </span><span class="cov8" title="1">{
+                        var branches []string
+                        if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil </span><span class="cov8" title="1">{
+                                for _, branchName = range branches </span><span class="cov8" title="1">{
+                                        if vs.IsReleaseBranch(branchName) </span><span class="cov8" title="1">{
+                                                return
+                                        }</span>
+                                }
+                        }
+                        <span class="cov8" title="1">branchName = ""</span>
                 }
         }
-        <span class="cov8" title="1">branchName = ""
-        return</span>
+        <span class="cov8" title="1">return</span>
 }
 
 // GetBranch returns the current branch as a string suitable
@@ -430,7 +426,7 @@ type Gitter interface {
         GetBranchesFromTag(repo, tag string) (branches []string, err error)
         // GetBuild returns the number of commits in the currently checked out branch as a string, or an empty string
         GetBuild(repo string) (string, error)
-        // FetchTags calls "git fetch --tags"
+        // FetchTags calls "git fetch --tags". Uses the "--unshallow" option if needed.
         FetchTags(repo string) error
         // CreateTag creates a new lightweight tag. Does nothing if tag is empty.
         CreateTag(repo, tag string) error
@@ -746,12 +742,16 @@ func (dg DefaultGitter) GetBuild(repo string) (buildnum string, err error) <span
 }
 
 func (dg DefaultGitter) FetchTags(repo string) (err error) <span class="cov8" title="1">{
-        // If this is a shallow clone, attempt to unshallow as part of fetching tags.
-        // Ignore the expected error when the repository is already complete.
-        _, _ = dg.Exec("-C", repo, "fetch", "--unshallow", "--tags")
-        _, err = dg.Exec("-C", repo, "fetch", "--tags") /* #nosec G204 */
-        return
-}</span>
+        var b []byte
+        if b, err = dg.Exec("-C", repo, "rev-parse", "--is-shallow-repository"); err == nil </span><span class="cov8" title="1">{
+                args := []string{"-C", repo, "fetch", "--tags", "--unshallow"}
+                if strings.TrimSpace(string(b)) != "true" </span><span class="cov8" title="1">{
+                        args = args[:len(args)-1]
+                }</span>
+                <span class="cov8" title="1">_, err = dg.Exec(args...)</span> /* #nosec G204 */
+        }
+        <span class="cov8" title="1">return</span>
+}
 
 func (dg DefaultGitter) CreateTag(repo, tag string) (err error) <span class="cov8" title="1">{
         if tag != "" </span><span class="cov8" title="1">{
