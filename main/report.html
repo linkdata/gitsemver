@@ -249,7 +249,8 @@ func (vs *GitSemVer) getTreeHash(repo, tag string) (gt GitTag, err error) <span 
 }
 
 func (vs *GitSemVer) examineTags(repo string) (err error) <span class="cov8" title="1">{
-        if vs.cleanstatus, err = vs.Git.CleanStatus(repo); err == nil </span><span class="cov8" title="1">{
+        // Version detection should ignore CI-generated untracked files.
+        if vs.cleanstatus, err = vs.Git.CleanStatus(repo, false); err == nil </span><span class="cov8" title="1">{
                 var headHashes GitTag
                 if headHashes, err = vs.getTreeHash(repo, "HEAD"); err == nil </span><span class="cov8" title="1">{
                         vs.Debug("treehash %s: HEAD (clean: %v)\n", headHashes.Tree, vs.cleanstatus)
@@ -439,8 +440,9 @@ type Gitter interface {
         PushTag(repo, tag string) (err error)
         // DeleteRemoteTag deletes the given tag from origin. Does nothing if tag is empty.
         DeleteRemoteTag(repo, tag string) (err error)
-        // CleanStatus returns true if there are no uncommitted changes in the repo
-        CleanStatus(repo string) (yes bool, err error)
+        // CleanStatus returns true if there are no uncommitted changes in the repo.
+        // If includeUntracked is false, untracked files do not affect cleanliness.
+        CleanStatus(repo string, includeUntracked bool) (yes bool, err error)
 }
 
 type DefaultGitter struct {
@@ -779,9 +781,13 @@ func (dg DefaultGitter) DeleteRemoteTag(repo, tag string) (err error) <span clas
         <span class="cov8" title="1">return</span>
 }
 
-func (dg DefaultGitter) CleanStatus(repo string) (yes bool, err error) <span class="cov8" title="1">{
+func (dg DefaultGitter) CleanStatus(repo string, includeUntracked bool) (yes bool, err error) <span class="cov8" title="1">{
         var b []byte
-        if b, err = dg.Exec("-C", repo, "status", "--porcelain"); err == nil </span><span class="cov8" title="1">{
+        args := []string{"-C", repo, "status", "--porcelain"}
+        if !includeUntracked </span><span class="cov8" title="1">{
+                args = append(args, "--untracked-files=no")
+        }</span>
+        <span class="cov8" title="1">if b, err = dg.Exec(args...); err == nil </span><span class="cov8" title="1">{
                 yes = len(b) == 0
         }</span>
         <span class="cov8" title="1">return</span>
@@ -1081,7 +1087,7 @@ func mainfn() int <span class="cov8" title="1">{
                                 if vi, err = vs.GetVersion(repoDir); err == nil </span><span class="cov8" title="1">{
                                         if *flagIncPatch </span><span class="cov8" title="1">{
                                                 var clean bool
-                                                if clean, err = vs.Git.CleanStatus(repoDir); err == nil </span><span class="cov8" title="1">{
+                                                if clean, err = vs.Git.CleanStatus(repoDir, true); err == nil </span><span class="cov8" title="1">{
                                                         if !clean </span><span class="cov8" title="1">{
                                                                 err = errors.New("cannot use -incpatch with uncommitted changes")
                                                         }</span> else<span class="cov8" title="1"> {
