@@ -196,9 +196,20 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	name, err = vs.GetBranch(".")
 	isEqual(t, err, nil)
 	isEqual(t, "feature/foo", name)
+	eventPath := filepath.Join(t.TempDir(), "event.json")
+	if err = os.WriteFile(eventPath, []byte(`{"pull_request":{"merged":true}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env["GITHUB_EVENT_NAME"] = "pull_request"
+	env["GITHUB_EVENT_PATH"] = eventPath
+	name, err = vs.GetBranch(".")
+	isEqual(t, err, nil)
+	isEqual(t, "main", name)
 	delete(env, "GITHUB_HEAD_REF")
 	delete(env, "GITHUB_BASE_REF")
 	delete(env, "GITHUB_REF_NAME")
+	delete(env, "GITHUB_EVENT_NAME")
+	delete(env, "GITHUB_EVENT_PATH")
 	git.branch = ""
 
 	git.branch = "detached"
