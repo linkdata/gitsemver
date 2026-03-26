@@ -61,7 +61,7 @@
 				
 				<option value="file2">github.com/linkdata/gitsemver/internal/gitsemver/errrevparse.go (100.0%)</option>
 				
-				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitsemver.go (98.1%)</option>
+				<option value="file3">github.com/linkdata/gitsemver/internal/gitsemver/gitsemver.go (100.0%)</option>
 				
 				<option value="file4">github.com/linkdata/gitsemver/internal/gitsemver/gitter.go (100.0%)</option>
 				
@@ -187,9 +187,11 @@ func (err *errUnexpectedRevParseOutput) Is(other error) bool <span class="cov8" 
 		<pre class="file" id="file3" style="display: none">package gitsemver
 
 import (
+        "encoding/json"
         "errors"
         "fmt"
         "io"
+        "os"
         "strconv"
         "strings"
 )
@@ -271,7 +273,7 @@ func (vs *GitSemVer) Debug(f string, args ...any) <span class="cov8" title="1">{
 
 func (vs *GitSemVer) cacheTag(gt GitTag) <span class="cov8" title="1">{
         for i := range vs.tags </span><span class="cov8" title="1">{
-                if vs.tags[i].Tag == gt.Tag </span><span class="cov0" title="0">{
+                if vs.tags[i].Tag == gt.Tag </span><span class="cov8" title="1">{
                         vs.tags[i] = gt
                         return
                 }</span>
@@ -358,27 +360,53 @@ func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) <sp
         <span class="cov8" title="1">return</span>
 }
 
+type gitHubPullRequestEvent struct {
+        PullRequest struct {
+                Merged bool `json:"merged"`
+        } `json:"pull_request"`
+}
+
+func (vs *GitSemVer) isMergedGitHubPullRequest() bool <span class="cov8" title="1">{
+        eventName := strings.TrimSpace(vs.Env.Getenv("GITHUB_EVENT_NAME"))
+        if eventName == "pull_request" || eventName == "pull_request_target" </span><span class="cov8" title="1">{
+                if eventPath := strings.TrimSpace(vs.Env.Getenv("GITHUB_EVENT_PATH")); eventPath != "" </span><span class="cov8" title="1">{
+                        if b, err := os.ReadFile(eventPath); /* #nosec G304 */ err == nil </span><span class="cov8" title="1">{
+                                var event gitHubPullRequestEvent
+                                if err = json.Unmarshal(b, &amp;event); err == nil </span><span class="cov8" title="1">{
+                                        return event.PullRequest.Merged
+                                }</span>
+                        }
+                }
+        }
+        <span class="cov8" title="1">return false</span>
+}
+
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) <span class="cov8" title="1">{
         // Pull request events expose the source branch as GITHUB_HEAD_REF.
         // Prefer this so PR builds are not mistaken for base-branch releases.
-        if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_HEAD_REF")); branchName == "" </span><span class="cov8" title="1">{
-                if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" </span><span class="cov8" title="1">{
-                        if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" </span><span class="cov8" title="1">{
-                                var branches []string
-                                if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil </span><span class="cov8" title="1">{
-                                        for _, branchName = range branches </span><span class="cov8" title="1">{
-                                                if vs.IsReleaseBranch(branchName) </span><span class="cov8" title="1">{
-                                                        return
-                                                }</span>
-                                        }
-                                }
-                                <span class="cov8" title="1">branchName = ""</span>
-                        }
-                } else<span class="cov8" title="1"> {
-                        // Fallback for contexts that only expose a base branch.
+        if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_HEAD_REF")); branchName != "" </span><span class="cov8" title="1">{
+                // Merged pull_request events should resolve to the target branch.
+                if vs.isMergedGitHubPullRequest() </span><span class="cov8" title="1">{
                         branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF"))
                 }</span>
+                <span class="cov8" title="1">return</span>
         }
+        <span class="cov8" title="1">if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" </span><span class="cov8" title="1">{
+                if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" </span><span class="cov8" title="1">{
+                        var branches []string
+                        if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil </span><span class="cov8" title="1">{
+                                for _, branchName = range branches </span><span class="cov8" title="1">{
+                                        if vs.IsReleaseBranch(branchName) </span><span class="cov8" title="1">{
+                                                return
+                                        }</span>
+                                }
+                        }
+                        <span class="cov8" title="1">branchName = ""</span>
+                }
+        } else<span class="cov8" title="1"> {
+                // Fallback for contexts that only expose a base branch.
+                branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF"))
+        }</span>
         <span class="cov8" title="1">return</span>
 }
 
