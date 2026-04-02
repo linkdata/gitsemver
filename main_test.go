@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
 )
 
 func init() {
@@ -28,6 +30,19 @@ func runGit(t *testing.T, dir string, args ...string) string {
 		t.Fatalf("git %q failed: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(b)))
 	}
 	return strings.TrimSpace(string(b))
+}
+
+func runGitHead(t *testing.T, repo string) string {
+	t.Helper()
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	head, err := dg.GetHead(repo, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return head
 }
 
 func TestReplaceFile_TargetMissing(t *testing.T) {
@@ -516,6 +531,7 @@ func TestMainFnIncPatchDoesNotWriteOutputOnPushError(t *testing.T) {
 	*flagBranch = false
 	testMode = false
 
+	preHead := runGitHead(t, work)
 	if code := mainfn(); code == 0 {
 		t.Fatal("mainfn unexpectedly succeeded")
 	}
@@ -528,6 +544,13 @@ func TestMainFnIncPatchDoesNotWriteOutputOnPushError(t *testing.T) {
 	localTags := runGit(t, work, "tag", "--list")
 	if strings.Contains(localTags, "v1.0.1") {
 		t.Fatalf("unexpected local tag v1.0.1: %q", localTags)
+	}
+	afterHead := runGitHead(t, work)
+	if afterHead != preHead {
+		t.Fatalf("expected HEAD to roll back to %q, got %q", preHead, afterHead)
+	}
+	if status := runGit(t, work, "status", "--porcelain"); status != "" {
+		t.Fatalf("expected clean status after rollback, got %q", status)
 	}
 }
 

@@ -37,6 +37,8 @@ type Gitter interface {
 	GetBranchesFromTag(repo, tag string) (branches []string, err error)
 	// GetBuild returns the number of commits in the currently checked out branch as a string, or an empty string
 	GetBuild(repo string) (string, error)
+	// GetHead returns the current HEAD commit hash if skip is false.
+	GetHead(repo string, skip bool) (head string, err error)
 	// FetchTags calls "git fetch --tags". Uses the "--unshallow" option if needed.
 	FetchTags(repo string) error
 	// CreateTag creates a new lightweight tag. Does nothing if tag is empty.
@@ -47,6 +49,8 @@ type Gitter interface {
 	PushTag(repo, tag string) (err error)
 	// DeleteRemoteTag deletes the given tag from origin. Does nothing if tag is empty.
 	DeleteRemoteTag(repo, tag string) (err error)
+	// Commit commits the given file if it exists. Does nothing if filePath is empty.
+	Commit(repo, filePath string) (err error)
 	// CleanStatus returns true if there are no uncommitted changes in the repo.
 	// If includeUntracked is false, untracked files do not affect cleanliness.
 	CleanStatus(repo string, includeUntracked bool) (yes bool, err error)
@@ -339,6 +343,16 @@ func (dg DefaultGitter) GetBuild(repo string) (buildnum string, err error) {
 	return
 }
 
+func (dg DefaultGitter) GetHead(repo string, skip bool) (head string, err error) {
+	if !skip {
+		var b []byte
+		if b, err = dg.Exec("-C", repo, "rev-parse", "HEAD"); err == nil && len(b) > 0 /* #nosec G204 */ {
+			head = strings.TrimSpace(string(b))
+		}
+	}
+	return
+}
+
 func (dg DefaultGitter) FetchTags(repo string) (err error) {
 	var b []byte
 	if b, err = dg.Exec("-C", repo, "rev-parse", "--is-shallow-repository"); err == nil {
@@ -354,6 +368,22 @@ func (dg DefaultGitter) FetchTags(repo string) (err error) {
 func (dg DefaultGitter) CreateTag(repo, tag string) (err error) {
 	if tag != "" {
 		_, err = dg.Exec("-C", repo, "tag", tag)
+	}
+	return
+}
+
+func (dg DefaultGitter) Commit(repo, filePath string) (err error) {
+	if filePath != "" {
+		var status []byte
+		if status, err = dg.Exec("-C", repo, "status", "--porcelain", "--", filePath); err == nil {
+			// No changes for this path: treat as success instead of surfacing
+			// "nothing to commit" as an error.
+			if len(status) != 0 {
+				if _, err = dg.Exec("-C", repo, "add", "--", filePath); err == nil {
+					_, err = dg.Exec("-C", repo, "commit", "-m", "update version", "--only", "--", filePath)
+				}
+			}
+		}
 	}
 	return
 }

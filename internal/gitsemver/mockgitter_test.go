@@ -155,6 +155,15 @@ func (mg *MockGitter) GetBuild(repo string) (string, error) {
 	return "", nil
 }
 
+func (mg *MockGitter) GetHead(repo string, skip bool) (head string, err error) {
+	if !skip {
+		if commit, _, e := mg.GetHashes(repo, "HEAD"); e == nil {
+			head = commit
+		}
+	}
+	return
+}
+
 func (mg *MockGitter) FetchTags(repo string) error {
 	return nil
 }
@@ -177,6 +186,10 @@ func (mg *MockGitter) DeleteRemoteTag(repo, tag string) (err error) {
 
 func (mg *MockGitter) CleanStatus(repo string, includeUntracked bool) (bool, error) {
 	return !mg.dirty, nil
+}
+
+func (mg *MockGitter) Commit(repo string, filePath string) error {
+	return nil
 }
 
 var _ gitsemver.Gitter = &MockGitter{}

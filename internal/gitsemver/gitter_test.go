@@ -562,6 +562,23 @@ func Test_DefaultGitter_GetBuild_IgnoresTraceStderr(t *testing.T) {
 	}
 }
 
+func Test_DefaultGitter_GetHead(t *testing.T) {
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if head, err := dg.GetHead("/", false); head != "" {
+		t.Fatalf("expected empty head for invalid repo, got %q err=%v", head, err)
+	}
+	head, err := dg.GetHead(".", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if head == "" {
+		t.Fatal("expected non-empty head")
+	}
+}
+
 func Test_maybeSync(t *testing.T) {
 	if f, err := os.CreateTemp("", ""); err == nil {
 		defer os.Remove(f.Name())
@@ -637,6 +654,103 @@ func Test_DefaultGitter_DeleteRemoteTag(t *testing.T) {
 	remoteTags := runGit(t, work, nil, "ls-remote", "--tags", "origin")
 	if strings.Contains(remoteTags, "refs/tags/v1.0.0") {
 		t.Fatalf("unexpected remote tag after delete: %q", remoteTags)
+	}
+}
+
+func Test_DefaultGitter_Commit_OnlySpecifiedFile(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	if err := os.WriteFile(filepath.Join(repo, "b.txt"), []byte("b\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, repo, nil, "add", "b.txt")
+	runGit(t, repo, nil, "commit", "-q", "-m", "add b")
+
+	if err := os.WriteFile(filepath.Join(repo, "a.txt"), []byte("a2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "b.txt"), []byte("b2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, repo, nil, "add", "b.txt")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dg.Commit(repo, filepath.Join(repo, "a.txt")); err != nil {
+		t.Fatal(err)
+	}
+
+	changed := runGit(t, repo, nil, "show", "--pretty=format:", "--name-only", "HEAD")
+	if changed != "a.txt" {
+		t.Fatalf("expected only a.txt in commit, got %q", changed)
+	}
+	status := runGit(t, repo, nil, "status", "--short")
+	if !strings.Contains(status, "M  b.txt") {
+		t.Fatalf("expected staged b.txt to remain staged, got %q", status)
+	}
+}
+
+func Test_DefaultGitter_Commit_NoErrorWhenFileIsUnchanged(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := dg.GetHead(repo, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dg.Commit(repo, filepath.Join(repo, "a.txt")); err != nil {
+		t.Fatalf("expected unchanged file commit to be a no-op, got %v", err)
+	}
+	after, err := dg.GetHead(repo, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before != after {
+		t.Fatalf("expected no new commit for unchanged file, before=%q after=%q", before, after)
+	}
+}
+
+func Test_DefaultGitter_Commit_AddsUntrackedSpecifiedFile(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+
+	if err := os.WriteFile(filepath.Join(repo, "version.gen.go"), []byte("package p\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "other.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dg.Commit(repo, filepath.Join(repo, "version.gen.go")); err != nil {
+		t.Fatal(err)
+	}
+
+	changed := runGit(t, repo, nil, "show", "--pretty=format:", "--name-only", "HEAD")
+	if changed != "version.gen.go" {
+		t.Fatalf("expected only version.gen.go in commit, got %q", changed)
+	}
+	status := runGit(t, repo, nil, "status", "--short")
+	if !strings.Contains(status, "?? other.txt") {
+		t.Fatalf("expected other.txt to remain untracked, got %q", status)
 	}
 }
 

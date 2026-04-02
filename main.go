@@ -157,12 +157,26 @@ func mainfn() int {
 						var cleanup func()
 						if publish, cleanup, err = prepareOutput(outpath, content); err == nil {
 							defer cleanup()
-							if err = vs.Git.CreateTag(repoDir, createTag); err == nil {
-								if err = vs.Git.PushTag(repoDir, createTag); err == nil {
-									if err = publish(); err == nil {
-										return 0
+							var preRunHead, afterHead string
+							if preRunHead, err = vs.Git.GetHead(repoDir, createTag == ""); err == nil {
+								if err = publish(); err == nil {
+									if err = vs.Git.Commit(repoDir, outpath); err == nil {
+										if afterHead, err = vs.Git.GetHead(repoDir, createTag == ""); err == nil {
+											if err = vs.Git.CreateTag(repoDir, createTag); err == nil {
+												if err = vs.Git.PushTag(repoDir, createTag); err == nil {
+													return 0
+												}
+												// remove the tag
+												err = errors.Join(err, vs.Git.DeleteTag(repoDir, createTag))
+												err = errors.Join(err, vs.Git.DeleteRemoteTag(repoDir, createTag))
+											}
+										}
 									}
-									err = errors.Join(err, vs.Git.DeleteRemoteTag(repoDir, createTag))
+									// revert the commit
+									if preRunHead != afterHead {
+										_, resetErr := vs.Git.Exec("-C", repoDir, "reset", "--hard", preRunHead)
+										err = errors.Join(err, resetErr)
+									}
 								}
 							}
 						}
@@ -170,7 +184,6 @@ func mainfn() int {
 				}
 			}
 		}
-		_ = vs.Git.DeleteTag(repoDir, createTag)
 	}
 
 	fmt.Fprintln(os.Stderr, err.Error()) // #nosec G705
