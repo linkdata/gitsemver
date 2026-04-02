@@ -63,12 +63,14 @@ const PkgVersion = %q
 // variables named "PkgName" and "PkgVersion"
 // with the given pkgName in all lower case and the contents of Version.
 // If the pkgName isn't a valid Go identifier, an error is returned.
-func (vi *VersionInfo) GoPackage(repo, pkgName string) (retv string, err error) {
+func (vi *VersionInfo) GoPackage(repo, pkgName, packageName string) (retv string, err error) {
 	pkgName, err = findPackageName(repo, pkgName)
 	if err == nil {
-		packageName := strings.ToLower(pkgName)
+		if packageName == "" {
+			packageName = strings.ToLower(pkgName)
+		}
 		if !token.IsIdentifier(packageName) {
-			err = fmt.Errorf("%q cannot be used as a Go package name after lowercasing", packageName)
+			err = fmt.Errorf("%q cannot be used as a Go package name", packageName)
 			return
 		}
 		generatedBy := ""

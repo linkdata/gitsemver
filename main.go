@@ -76,7 +76,8 @@ func prepareOutput(fileName, content string) (publish func() error, cleanup func
 var (
 	flagGit       = flag.String("git", "git", "path to Git executable")
 	flagOut       = flag.String("out", "", "write to file instead of stdout (relative paths are relative to repo)")
-	flagName      = flag.String("name", "", "override the Go PkgName, default is to use last portion of module in go.mod")
+	flagName      = flag.String("name", "", "set the PkgName used in gopackage, default is to use last portion of module in go.mod")
+	flagPackage   = flag.String("package", "", "override the go package used in gopackage, default is to use last portion of module in go.mod")
 	flagDebug     = flag.Bool("debug", false, "write debug info to stderr")
 	flagGoPackage = flag.Bool("gopackage", false, "write Go source with PkgName and PkgVersion")
 	flagNoFetch   = flag.Bool("nofetch", false, "don't fetch remote tags")
@@ -136,7 +137,7 @@ func mainfn() int {
 						content = vi.Branch
 					}
 					if *flagGoPackage {
-						content, err = vi.GoPackage(repoDir, *flagName)
+						content, err = vi.GoPackage(repoDir, *flagName, *flagPackage)
 					}
 					if err == nil {
 						outpath := os.ExpandEnv(*flagOut)
