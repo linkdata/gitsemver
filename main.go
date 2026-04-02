@@ -83,6 +83,7 @@ var (
 	flagNoFetch   = flag.Bool("nofetch", false, "don't fetch remote tags")
 	flagNoNewline = flag.Bool("nonewline", false, "don't print a newline after the output")
 	flagIncPatch  = flag.Bool("incpatch", false, "increment the patch level and create a new tag")
+	flagIncMinor  = flag.Bool("incminor", false, "increment the minor level and create a new tag")
 	flagBranch    = flag.Bool("branch", false, "print the current branch name")
 	flagVersion   = flag.Bool("version", false, "print the version of gitsemver and exit")
 )
@@ -125,16 +126,24 @@ func mainfn() int {
 			if err == nil {
 				var vi gitsemver.VersionInfo
 				if vi, err = vs.GetVersion(repoDir); err == nil {
-					if *flagIncPatch {
+					if *flagIncPatch && *flagIncMinor {
+						err = errors.New("cannot use both -incpatch and -incminor")
+					}
+					if err == nil && (*flagIncPatch || *flagIncMinor) {
 						var clean bool
 						if clean, err = vs.Git.CleanStatus(repoDir, true); err == nil {
-							if !clean {
-								err = errors.New("cannot use -incpatch with uncommitted changes")
-							} else {
-								createTag = vi.IncPatch()
+							if clean {
+								if *flagIncPatch {
+									createTag = vi.IncPatch()
+								}
+								if *flagIncMinor {
+									createTag = vi.IncMinor()
+								}
 								if testMode {
 									createTag = ""
 								}
+							} else {
+								err = errors.New("cannot bump version with uncommitted changes")
 							}
 						}
 					}

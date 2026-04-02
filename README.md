@@ -50,6 +50,8 @@ Usage of gitsemver:
         write Go source with PkgName and PkgVersion
   -incpatch
         increment the patch level and create a new tag
+  -incminor
+        increment the minor level and create a new tag
   -name string
         override the Go PkgName, default is to use last portion of module in go.mod
   -nofetch
@@ -76,6 +78,8 @@ $ gitsemver
 v1.2.3-main.456
 $ gitsemver -incpatch
 v1.2.4
+$ gitsemver -incminor
+v1.3.0
 ```
 
 #### Generate a go package file with version information

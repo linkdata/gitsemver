@@ -227,13 +227,13 @@ func TestMainFn(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -263,6 +263,7 @@ func TestMainFn(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = false
+	*flagIncMinor = false
 	*flagBranch = false
 	testMode = true
 
@@ -291,13 +292,13 @@ func TestMainFnBranch(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -324,6 +325,7 @@ func TestMainFnBranch(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = true
+	*flagIncMinor = false
 	*flagBranch = true
 	testMode = true
 
@@ -352,13 +354,13 @@ func TestMainFn_IgnoresUntrackedFilesForVersion(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -388,6 +390,7 @@ func TestMainFn_IgnoresUntrackedFilesForVersion(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = false
+	*flagIncMinor = false
 	*flagBranch = false
 	testMode = false
 
@@ -429,13 +432,13 @@ func TestMainFnIncPatchDoesNotPushOnWriteError(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -467,6 +470,7 @@ func TestMainFnIncPatchDoesNotPushOnWriteError(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = true
+	*flagIncMinor = false
 	*flagBranch = false
 	testMode = false
 
@@ -495,13 +499,13 @@ func TestMainFnIncPatchDoesNotWriteOutputOnPushError(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -528,6 +532,7 @@ func TestMainFnIncPatchDoesNotWriteOutputOnPushError(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = true
+	*flagIncMinor = false
 	*flagBranch = false
 	testMode = false
 
@@ -565,13 +570,13 @@ func TestMainFnIncPatchRefusesDirtyTree(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -607,6 +612,7 @@ func TestMainFnIncPatchRefusesDirtyTree(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = true
+	*flagIncMinor = false
 	*flagBranch = false
 	testMode = false
 
@@ -640,13 +646,13 @@ func TestMainFnIncPatchRefusesUntrackedFile(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -682,6 +688,7 @@ func TestMainFnIncPatchRefusesUntrackedFile(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = true
+	*flagIncMinor = false
 	*flagBranch = false
 	testMode = false
 
@@ -715,13 +722,13 @@ func TestMainFnIncPatchOverwritesExistingOutputFile(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -759,6 +766,7 @@ func TestMainFnIncPatchOverwritesExistingOutputFile(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = true
+	*flagIncMinor = false
 	*flagBranch = false
 	testMode = false
 
@@ -793,13 +801,13 @@ func TestMainFnIncPatchRollsBackRemoteTagOnPublishError(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -831,6 +839,7 @@ func TestMainFnIncPatchRollsBackRemoteTagOnPublishError(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = true
+	*flagIncMinor = false
 	*flagBranch = false
 	testMode = false
 
@@ -868,13 +877,13 @@ func TestMainFnNoFetchDoesNotRunAnyFetch(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -905,6 +914,7 @@ func TestMainFnNoFetchDoesNotRunAnyFetch(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = false
+	*flagIncMinor = false
 	*flagBranch = false
 	testMode = true
 
@@ -942,13 +952,13 @@ func TestMainFnIncPatchInTestModeDoesNotCreateTag(t *testing.T) {
 	origGit, origOut, origName := *flagGit, *flagOut, *flagName
 	origDebug, origGoPackage := *flagDebug, *flagGoPackage
 	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
-	origIncPatch, origBranch := *flagIncPatch, *flagBranch
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
 	origTestMode := testMode
 	defer func() {
 		*flagGit, *flagOut, *flagName = origGit, origOut, origName
 		*flagDebug, *flagGoPackage = origDebug, origGoPackage
 		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
-		*flagIncPatch, *flagBranch = origIncPatch, origBranch
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
 		testMode = origTestMode
 	}()
 
@@ -975,6 +985,7 @@ func TestMainFnIncPatchInTestModeDoesNotCreateTag(t *testing.T) {
 	*flagNoFetch = true
 	*flagNoNewline = false
 	*flagIncPatch = true
+	*flagIncMinor = false
 	*flagBranch = false
 	testMode = true
 
@@ -985,5 +996,274 @@ func TestMainFnIncPatchInTestModeDoesNotCreateTag(t *testing.T) {
 	localTags := runGit(t, work, "tag", "--list")
 	if strings.Contains(localTags, "v1.0.1") {
 		t.Fatalf("unexpected local tag v1.0.1 in test mode: %q", localTags)
+	}
+}
+
+func TestMainFnRejectsIncPatchAndIncMinor(t *testing.T) {
+	flag.Parse()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	origGit, origOut, origName := *flagGit, *flagOut, *flagName
+	origDebug, origGoPackage := *flagDebug, *flagGoPackage
+	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
+	origTestMode := testMode
+	defer func() {
+		*flagGit, *flagOut, *flagName = origGit, origOut, origName
+		*flagDebug, *flagGoPackage = origDebug, origGoPackage
+		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
+		testMode = origTestMode
+	}()
+
+	work := t.TempDir()
+	runGit(t, work, "init", "-q")
+	runGit(t, work, "config", "user.email", "test@example.com")
+	runGit(t, work, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(work, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "add", "a.txt")
+	runGit(t, work, "commit", "-q", "-m", "c1")
+	runGit(t, work, "tag", "v1.0.0")
+	if err := os.Chdir(work); err != nil {
+		t.Fatal(err)
+	}
+
+	*flagGit = "git"
+	*flagOut = "out.txt"
+	*flagName = ""
+	*flagDebug = false
+	*flagGoPackage = false
+	*flagNoFetch = true
+	*flagNoNewline = false
+	*flagIncPatch = true
+	*flagIncMinor = true
+	*flagBranch = false
+	testMode = false
+
+	if code := mainfn(); code == 0 {
+		t.Fatal("mainfn unexpectedly succeeded")
+	}
+	if _, err := os.Stat(filepath.Join(work, "out.txt")); err == nil {
+		t.Fatal("unexpected output file out.txt")
+	} else if !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	localTags := runGit(t, work, "tag", "--list")
+	if strings.Contains(localTags, "v1.0.1") || strings.Contains(localTags, "v1.1.0") {
+		t.Fatalf("unexpected incremented tags: %q", localTags)
+	}
+}
+
+func TestMainFnIncMinorOverwritesExistingOutputFile(t *testing.T) {
+	flag.Parse()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	origGit, origOut, origName := *flagGit, *flagOut, *flagName
+	origDebug, origGoPackage := *flagDebug, *flagGoPackage
+	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
+	origTestMode := testMode
+	defer func() {
+		*flagGit, *flagOut, *flagName = origGit, origOut, origName
+		*flagDebug, *flagGoPackage = origDebug, origGoPackage
+		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
+		testMode = origTestMode
+	}()
+
+	base := t.TempDir()
+	origin := filepath.Join(base, "origin.git")
+	work := filepath.Join(base, "work")
+
+	runGit(t, "", "init", "--bare", "-q", origin)
+	runGit(t, "", "clone", "-q", origin, work)
+	runGit(t, work, "config", "user.email", "test@example.com")
+	runGit(t, work, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(work, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "add", "a.txt")
+	runGit(t, work, "commit", "-q", "-m", "c1")
+	runGit(t, work, "tag", "v1.0.0")
+	runGit(t, work, "push", "-q", "origin", "HEAD", "--tags")
+
+	if err := os.WriteFile(filepath.Join(work, "out.txt"), []byte("old\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "add", "out.txt")
+	runGit(t, work, "commit", "-q", "-m", "add out")
+
+	if err := os.Chdir(work); err != nil {
+		t.Fatal(err)
+	}
+
+	*flagGit = "git"
+	*flagOut = "out.txt"
+	*flagName = ""
+	*flagDebug = false
+	*flagGoPackage = false
+	*flagNoFetch = true
+	*flagNoNewline = false
+	*flagIncPatch = false
+	*flagIncMinor = true
+	*flagBranch = false
+	testMode = false
+
+	if code := mainfn(); code != 0 {
+		t.Fatalf("mainfn failed with code %d", code)
+	}
+
+	out, err := os.ReadFile(filepath.Join(work, "out.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(out), "old") {
+		t.Fatalf("expected out.txt to be replaced, got %q", string(out))
+	}
+	if !strings.Contains(string(out), "v1.1.0") {
+		t.Fatalf("expected out.txt to contain new version, got %q", string(out))
+	}
+	remoteTags := runGit(t, work, "ls-remote", "--tags", "origin")
+	if !strings.Contains(remoteTags, "refs/tags/v1.1.0") {
+		t.Fatalf("expected remote tag v1.1.0, got %q", remoteTags)
+	}
+}
+
+func TestMainFnIncMinorDoesNotWriteOutputOnPushError(t *testing.T) {
+	flag.Parse()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	origGit, origOut, origName := *flagGit, *flagOut, *flagName
+	origDebug, origGoPackage := *flagDebug, *flagGoPackage
+	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
+	origTestMode := testMode
+	defer func() {
+		*flagGit, *flagOut, *flagName = origGit, origOut, origName
+		*flagDebug, *flagGoPackage = origDebug, origGoPackage
+		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
+		testMode = origTestMode
+	}()
+
+	work := t.TempDir()
+	runGit(t, work, "init", "-q")
+	runGit(t, work, "config", "user.email", "test@example.com")
+	runGit(t, work, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(work, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "add", "a.txt")
+	runGit(t, work, "commit", "-q", "-m", "c1")
+	runGit(t, work, "tag", "v1.0.0")
+
+	if err := os.Chdir(work); err != nil {
+		t.Fatal(err)
+	}
+
+	*flagGit = "git"
+	*flagOut = "out.txt"
+	*flagName = ""
+	*flagDebug = false
+	*flagGoPackage = false
+	*flagNoFetch = true
+	*flagNoNewline = false
+	*flagIncPatch = false
+	*flagIncMinor = true
+	*flagBranch = false
+	testMode = false
+
+	preHead := runGitHead(t, work)
+	if code := mainfn(); code == 0 {
+		t.Fatal("mainfn unexpectedly succeeded")
+	}
+
+	if _, err := os.Stat(filepath.Join(work, "out.txt")); err == nil {
+		t.Fatal("unexpected output file out.txt")
+	} else if !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	localTags := runGit(t, work, "tag", "--list")
+	if strings.Contains(localTags, "v1.1.0") {
+		t.Fatalf("unexpected local tag v1.1.0: %q", localTags)
+	}
+	afterHead := runGitHead(t, work)
+	if afterHead != preHead {
+		t.Fatalf("expected HEAD to roll back to %q, got %q", preHead, afterHead)
+	}
+	if status := runGit(t, work, "status", "--porcelain"); status != "" {
+		t.Fatalf("expected clean status after rollback, got %q", status)
+	}
+}
+
+func TestMainFnIncMinorInTestModeDoesNotCreateTag(t *testing.T) {
+	flag.Parse()
+	oldWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	origGit, origOut, origName := *flagGit, *flagOut, *flagName
+	origDebug, origGoPackage := *flagDebug, *flagGoPackage
+	origNoFetch, origNoNewline := *flagNoFetch, *flagNoNewline
+	origIncPatch, origIncMinor, origBranch := *flagIncPatch, *flagIncMinor, *flagBranch
+	origTestMode := testMode
+	defer func() {
+		*flagGit, *flagOut, *flagName = origGit, origOut, origName
+		*flagDebug, *flagGoPackage = origDebug, origGoPackage
+		*flagNoFetch, *flagNoNewline = origNoFetch, origNoNewline
+		*flagIncPatch, *flagIncMinor, *flagBranch = origIncPatch, origIncMinor, origBranch
+		testMode = origTestMode
+	}()
+
+	work := t.TempDir()
+	runGit(t, work, "init", "-q")
+	runGit(t, work, "config", "user.email", "test@example.com")
+	runGit(t, work, "config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(work, "a.txt"), []byte("a\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, work, "add", "a.txt")
+	runGit(t, work, "commit", "-q", "-m", "c1")
+	runGit(t, work, "tag", "v1.0.0")
+
+	if err := os.Chdir(work); err != nil {
+		t.Fatal(err)
+	}
+
+	*flagGit = "git"
+	*flagOut = "out.txt"
+	*flagName = ""
+	*flagDebug = false
+	*flagGoPackage = false
+	*flagNoFetch = true
+	*flagNoNewline = false
+	*flagIncPatch = false
+	*flagIncMinor = true
+	*flagBranch = false
+	testMode = true
+
+	if code := mainfn(); code != 0 {
+		t.Fatalf("mainfn failed with code %d", code)
+	}
+
+	localTags := runGit(t, work, "tag", "--list")
+	if strings.Contains(localTags, "v1.1.0") {
+		t.Fatalf("unexpected local tag v1.1.0 in test mode: %q", localTags)
 	}
 }

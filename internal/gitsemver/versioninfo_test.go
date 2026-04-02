@@ -137,6 +137,69 @@ func Test_VersionInfo_IncPatch_OverflowPatchLevel(t *testing.T) {
 	}
 }
 
+func Test_VersionInfo_IncMinor_Mappings(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{in: "v1", want: "v1.1"},
+		{in: "v1.2", want: "v1.3"},
+		{in: "v1.2.3", want: "v1.3.0"},
+	}
+	for _, tt := range tests {
+		vi := &gitsemver.VersionInfo{Tag: tt.in}
+		if got := vi.IncMinor(); got != tt.want {
+			t.Fatalf("IncMinor(%q): expected %q, got %q", tt.in, tt.want, got)
+		}
+		if !vi.SameTree {
+			t.Fatalf("IncMinor(%q): expected SameTree=true", tt.in)
+		}
+	}
+}
+
+func Test_VersionInfo_IncMinor_PrereleaseTag(t *testing.T) {
+	vi := &gitsemver.VersionInfo{Tag: "v1.2.3-rc.1"}
+	if got := vi.IncMinor(); got != "v1.3.0" {
+		t.Fatalf("expected v1.3.0, got %q", got)
+	}
+	if !vi.SameTree {
+		t.Fatal("expected SameTree=true")
+	}
+}
+
+func Test_VersionInfo_IncMinor_AvoidsEquivalentPrefixCollisions(t *testing.T) {
+	vi := &gitsemver.VersionInfo{
+		Tag: "v1.2.3",
+		Tags: []gitsemver.GitTag{
+			{Tag: "v1.3.0"},
+			{Tag: "1.4.0"},
+		},
+	}
+	if got := vi.IncMinor(); got != "v1.5.0" {
+		t.Fatalf("expected v1.5.0, got %q", got)
+	}
+}
+
+func Test_VersionInfo_IncMinor_InvalidTagNoLoop(t *testing.T) {
+	vi := &gitsemver.VersionInfo{Tag: "not-a-semver-tag"}
+	if got := vi.IncMinor(); got != "not-a-semver-tag" {
+		t.Fatalf("expected unchanged tag, got %q", got)
+	}
+	if !vi.SameTree {
+		t.Fatal("expected SameTree=true for unchanged non-semver tag")
+	}
+}
+
+func Test_VersionInfo_IncMinor_OverflowMinorLevel(t *testing.T) {
+	vi := &gitsemver.VersionInfo{Tag: "v1.9999999999999999999999999"}
+	if got := vi.IncMinor(); got != "v1.9999999999999999999999999" {
+		t.Fatalf("expected unchanged overflow minor tag, got %q", got)
+	}
+	if !vi.SameTree {
+		t.Fatal("expected SameTree=true for unchanged overflow tag")
+	}
+}
+
 func Test_CleanBranch(t *testing.T) {
 	isEqual(t, "branch-with-dots", gitsemver.CleanBranch("-branch.with..dots"))
 	isEqual(t, "gitlab-branch", gitsemver.CleanBranch("gitlab---branch"))

@@ -132,6 +132,53 @@ func (vi *VersionInfo) IncPatch() string {
 	return vi.Tag
 }
 
+// IncMinor increments the minor level of the version, returning the new tag.
+func (vi *VersionInfo) IncMinor() string {
+	baseTag := vi.Tag
+	// Ignore prerelease/build suffixes when incrementing the minor level.
+	if idx := strings.IndexAny(baseTag, "-+"); idx > -1 {
+		if core := baseTag[:idx]; isSemverTag(core) {
+			baseTag = core
+		}
+	}
+	if !isSemverTag(baseTag) {
+		vi.SameTree = true
+		return vi.Tag
+	}
+	hasVPrefix := strings.HasPrefix(baseTag, "v")
+	core := strings.TrimPrefix(baseTag, "v")
+	parts := strings.Split(core, ".")
+	major := parts[0]
+	minor := 0
+	var err error
+	if len(parts) > 1 {
+		if minor, err = strconv.Atoi(parts[1]); err != nil {
+			vi.SameTree = true
+			return vi.Tag
+		}
+	}
+	hasPatch := len(parts) >= 3
+	prefix := ""
+	if hasVPrefix {
+		prefix = "v"
+	}
+	for {
+		minor++
+		if len(parts) == 1 {
+			vi.Tag = prefix + major + "." + strconv.Itoa(minor)
+		} else if hasPatch {
+			vi.Tag = prefix + major + "." + strconv.Itoa(minor) + ".0"
+		} else {
+			vi.Tag = prefix + major + "." + strconv.Itoa(minor)
+		}
+		if !vi.HasTag(vi.Tag) {
+			break
+		}
+	}
+	vi.SameTree = true
+	return vi.Tag
+}
+
 func CleanBranch(branch string) string {
 	// SemVer pre-release identifiers only allow [0-9A-Za-z-].
 	branch = reNonSemVerPreRelease.ReplaceAllString(branch, "-")
