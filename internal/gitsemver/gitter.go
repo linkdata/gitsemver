@@ -39,6 +39,8 @@ type Gitter interface {
 	GetBuild(repo string) (string, error)
 	// GetHead returns the current HEAD commit hash if skip is false.
 	GetHead(repo string, skip bool) (head string, err error)
+	// ResetHard hard-resets the repository to the given commit. Does nothing if commit is empty.
+	ResetHard(repo, commit string) (err error)
 	// FetchTags calls "git fetch --tags". Uses the "--unshallow" option if needed.
 	FetchTags(repo string) error
 	// CreateTag creates a new lightweight tag. Does nothing if tag is empty.
@@ -349,6 +351,13 @@ func (dg DefaultGitter) GetHead(repo string, skip bool) (head string, err error)
 		if b, err = dg.Exec("-C", repo, "rev-parse", "HEAD"); err == nil && len(b) > 0 /* #nosec G204 */ {
 			head = strings.TrimSpace(string(b))
 		}
+	}
+	return
+}
+
+func (dg DefaultGitter) ResetHard(repo, commit string) (err error) {
+	if commit != "" {
+		_, err = dg.Exec("-C", repo, "reset", "--hard", commit)
 	}
 	return
 }

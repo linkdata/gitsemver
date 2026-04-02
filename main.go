@@ -173,9 +173,8 @@ func mainfn() int {
 										}
 									}
 									// revert the commit
-									if preRunHead != afterHead {
-										_, resetErr := vs.Git.Exec("-C", repoDir, "reset", "--hard", preRunHead)
-										err = errors.Join(err, resetErr)
+									if outpath != "" && preRunHead != afterHead {
+										err = errors.Join(err, vs.Git.ResetHard(repoDir, preRunHead))
 									}
 								}
 							}

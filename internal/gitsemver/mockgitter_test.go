@@ -164,6 +164,10 @@ func (mg *MockGitter) GetHead(repo string, skip bool) (head string, err error) {
 	return
 }
 
+func (mg *MockGitter) ResetHard(repo, commit string) (err error) {
+	return nil
+}
+
 func (mg *MockGitter) FetchTags(repo string) error {
 	return nil
 }
