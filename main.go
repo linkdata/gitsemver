@@ -11,8 +11,10 @@ import (
 	"path/filepath"
 	"syscall"
 
-	gitsemver "github.com/linkdata/gitsemver/internal/gitsemver"
+	"github.com/linkdata/gitsemver/internal/gitsemver"
 )
+
+//go:generate go run . -gopackage -package main -out version.gen.go
 
 var writeFileFn = os.WriteFile
 var removeFileFn = os.Remove
@@ -84,6 +86,7 @@ var (
 	flagNoNewline = flag.Bool("nonewline", false, "don't print a newline after the output")
 	flagIncPatch  = flag.Bool("incpatch", false, "increment the patch level and create a new tag")
 	flagBranch    = flag.Bool("branch", false, "print the current branch name")
+	flagVersion   = flag.Bool("version", false, "print the version of gitsemver and exit")
 )
 
 var exitFn func(int) = os.Exit
@@ -107,6 +110,11 @@ func mainfn() int {
 	var debugOut io.Writer
 	if *flagDebug {
 		debugOut = os.Stderr
+	}
+
+	if *flagVersion {
+		fmt.Println(PkgName, PkgVersion)
+		return 0
 	}
 
 	vs, err := gitsemver.New(*flagGit, debugOut)
