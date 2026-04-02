@@ -9,7 +9,6 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"syscall"
 
 	"github.com/linkdata/gitsemver/internal/gitsemver"
@@ -109,13 +108,6 @@ func mainfn() int {
 	var debugOut io.Writer
 	if *flagDebug {
 		debugOut = os.Stderr
-	}
-
-	if info, ok := debug.ReadBuildInfo(); ok {
-		fmt.Println("Key:\tValue")
-		for _, kv := range info.Settings {
-			fmt.Println(kv.Key + ":\t" + kv.Value)
-		}
 	}
 
 	if *flagVersion {
