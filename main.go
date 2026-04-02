@@ -9,6 +9,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"syscall"
 
 	"github.com/linkdata/gitsemver/internal/gitsemver"
@@ -110,6 +111,13 @@ func mainfn() int {
 		debugOut = os.Stderr
 	}
 
+	if info, ok := debug.ReadBuildInfo(); ok {
+		fmt.Println("Key:\tValue")
+		for _, kv := range info.Settings {
+			fmt.Println(kv.Key + ":\t" + kv.Value)
+		}
+	}
+
 	if *flagVersion {
 		fmt.Println(gitsemver.PkgName, gitsemver.PkgVersion)
 		return 0
@@ -143,7 +151,7 @@ func mainfn() int {
 						content = vi.Branch
 					}
 					if *flagGoPackage {
-						content, err = vi.GoPackage(repoDir, *flagName, *flagPackage)
+						content, err = vi.GoPackage(repoDir, *flagName, *flagPackage, createTag)
 					}
 					if err == nil {
 						outpath := os.ExpandEnv(*flagOut)

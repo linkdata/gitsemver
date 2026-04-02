@@ -63,11 +63,14 @@ const PkgVersion = %q
 // variables named "PkgName" and "PkgVersion"
 // with the given pkgName in all lower case and the contents of Version.
 // If the pkgName isn't a valid Go identifier, an error is returned.
-func (vi *VersionInfo) GoPackage(repo, pkgName, packageName string) (retv string, err error) {
+func (vi *VersionInfo) GoPackage(repo, pkgName, packageName, createTag string) (retv string, err error) {
 	pkgName, err = findPackageName(repo, pkgName)
 	if err == nil {
 		if packageName == "" {
 			packageName = strings.ToLower(pkgName)
+		}
+		if createTag == "" {
+			createTag = vi.Version()
 		}
 		if !token.IsIdentifier(packageName) {
 			err = fmt.Errorf("%q cannot be used as a Go package name", packageName)
@@ -78,7 +81,7 @@ func (vi *VersionInfo) GoPackage(repo, pkgName, packageName string) (retv string
 			vi.Branch, vi.Build,
 			packageName,
 			pkgName,
-			vi.Version())
+			createTag)
 	}
 	return
 }
