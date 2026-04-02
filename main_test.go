@@ -216,6 +216,36 @@ func TestExitCodeForError_FindsErrnoInJoinedError(t *testing.T) {
 	}
 }
 
+func TestMainFnVersion(t *testing.T) {
+	flag.Parse()
+	origVersion := *flagVersion
+	defer func() { *flagVersion = origVersion }()
+
+	*flagVersion = true
+
+	origStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	code := mainfn()
+	os.Stdout = origStdout
+	_ = w.Close()
+	out, err := io.ReadAll(r)
+	_ = r.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code != 0 {
+		t.Fatalf("mainfn failed with code %d", code)
+	}
+	want := gitsemver.PkgName + " " + gitsemver.PkgVersion + "\n"
+	if string(out) != want {
+		t.Fatalf("unexpected version output %q want %q", string(out), want)
+	}
+}
+
 func TestMainFn(t *testing.T) {
 	flag.Parse()
 	oldWD, err := os.Getwd()

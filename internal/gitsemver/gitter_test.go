@@ -579,6 +579,40 @@ func Test_DefaultGitter_GetHead(t *testing.T) {
 	}
 }
 
+func Test_DefaultGitter_ResetHard(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+	commitAt(t, repo, "a.txt", "a2\n", "c2", "2020-01-02T00:00:00Z")
+
+	previous := runGit(t, repo, nil, "rev-parse", "HEAD~1")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dg.ResetHard(repo, previous); err != nil {
+		t.Fatal(err)
+	}
+
+	head := runGit(t, repo, nil, "rev-parse", "HEAD")
+	if head != previous {
+		t.Fatalf("expected HEAD %q after reset, got %q", previous, head)
+	}
+	content, err := os.ReadFile(filepath.Join(repo, "a.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "a\n" {
+		t.Fatalf("unexpected file content after reset: %q", string(content))
+	}
+	if status := runGit(t, repo, nil, "status", "--short"); status != "" {
+		t.Fatalf("expected clean status after reset, got %q", status)
+	}
+}
+
 func Test_maybeSync(t *testing.T) {
 	if f, err := os.CreateTemp("", ""); err == nil {
 		defer os.Remove(f.Name())
