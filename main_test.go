@@ -818,6 +818,11 @@ func TestMainFnIncPatchOverwritesExistingOutputFile(t *testing.T) {
 	if !strings.Contains(remoteTags, "refs/tags/v1.0.1") {
 		t.Fatalf("expected remote tag v1.0.1, got %q", remoteTags)
 	}
+	subject := runGit(t, work, "show", "-s", "--format=%s", "HEAD")
+	expectedSubject := gitsemver.MakeCommitMessage("v1.0.1")
+	if subject != expectedSubject {
+		t.Fatalf("expected commit subject %q, got %q", expectedSubject, subject)
+	}
 }
 
 func TestMainFnIncPatchRollsBackRemoteTagOnPublishError(t *testing.T) {
@@ -1166,6 +1171,11 @@ func TestMainFnIncMinorOverwritesExistingOutputFile(t *testing.T) {
 	remoteTags := runGit(t, work, "ls-remote", "--tags", "origin")
 	if !strings.Contains(remoteTags, "refs/tags/v1.1.0") {
 		t.Fatalf("expected remote tag v1.1.0, got %q", remoteTags)
+	}
+	subject := runGit(t, work, "show", "-s", "--format=%s", "HEAD")
+	expectedSubject := gitsemver.MakeCommitMessage("v1.1.0")
+	if subject != expectedSubject {
+		t.Fatalf("expected commit subject %q, got %q", expectedSubject, subject)
 	}
 }
 

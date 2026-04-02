@@ -52,7 +52,7 @@ type Gitter interface {
 	// DeleteRemoteTag deletes the given tag from origin. Does nothing if tag is empty.
 	DeleteRemoteTag(repo, tag string) (err error)
 	// Commit commits the given file if it exists. Does nothing if filePath is empty.
-	Commit(repo, filePath string) (err error)
+	Commit(repo, filePath, tag string) (err error)
 	// CleanStatus returns true if there are no uncommitted changes in the repo.
 	// If includeUntracked is false, untracked files do not affect cleanliness.
 	CleanStatus(repo string, includeUntracked bool) (yes bool, err error)
@@ -381,7 +381,15 @@ func (dg DefaultGitter) CreateTag(repo, tag string) (err error) {
 	return
 }
 
-func (dg DefaultGitter) Commit(repo, filePath string) (err error) {
+func MakeCommitMessage(tag string) (s string) {
+	s = "tag"
+	if tag != "" {
+		s += " " + tag
+	}
+	return
+}
+
+func (dg DefaultGitter) Commit(repo, filePath, tag string) (err error) {
 	if filePath != "" {
 		var status []byte
 		if status, err = dg.Exec("-C", repo, "status", "--porcelain", "--", filePath); err == nil {
@@ -389,7 +397,7 @@ func (dg DefaultGitter) Commit(repo, filePath string) (err error) {
 			// "nothing to commit" as an error.
 			if len(status) != 0 {
 				if _, err = dg.Exec("-C", repo, "add", "--", filePath); err == nil {
-					_, err = dg.Exec("-C", repo, "commit", "-m", "update version", "--only", "--", filePath)
+					_, err = dg.Exec("-C", repo, "commit", "-m", MakeCommitMessage(tag), "--only", "--", filePath)
 				}
 			}
 		}

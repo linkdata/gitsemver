@@ -169,7 +169,7 @@ func mainfn() int {
 							var preRunHead, afterHead string
 							if preRunHead, err = vs.Git.GetHead(repoDir, createTag == ""); err == nil {
 								if err = publish(); err == nil {
-									if err = vs.Git.Commit(repoDir, outpath); err == nil {
+									if err = vs.Git.Commit(repoDir, outpath, createTag); err == nil {
 										if afterHead, err = vs.Git.GetHead(repoDir, createTag == ""); err == nil {
 											if err = vs.Git.CreateTag(repoDir, createTag); err == nil {
 												if err = vs.Git.PushTag(repoDir, createTag); err == nil {

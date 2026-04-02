@@ -45,3 +45,12 @@ func Test_hasGitMarker_ReadFileError(t *testing.T) {
 		t.Fatal("expected read error")
 	}
 }
+
+func Test_makeCommitMessage(t *testing.T) {
+	if got, want := MakeCommitMessage("v1.2.3"), "tag v1.2.3"; got != want {
+		t.Fatalf("makeCommitMessage mismatch: got %q want %q", got, want)
+	}
+	if got, want := MakeCommitMessage(""), "tag"; got != want {
+		t.Fatalf("makeCommitMessage mismatch: got %q want %q", got, want)
+	}
+}

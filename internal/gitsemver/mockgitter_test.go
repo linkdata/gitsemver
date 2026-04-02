@@ -192,7 +192,7 @@ func (mg *MockGitter) CleanStatus(repo string, includeUntracked bool) (bool, err
 	return !mg.dirty, nil
 }
 
-func (mg *MockGitter) Commit(repo string, filePath string) error {
+func (mg *MockGitter) Commit(repo string, filePath, message string) error {
 	return nil
 }
 

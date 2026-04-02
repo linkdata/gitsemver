@@ -715,13 +715,19 @@ func Test_DefaultGitter_Commit_OnlySpecifiedFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := dg.Commit(repo, filepath.Join(repo, "a.txt")); err != nil {
+	message := "release: v1.0.1"
+	if err := dg.Commit(repo, filepath.Join(repo, "a.txt"), message); err != nil {
 		t.Fatal(err)
 	}
 
 	changed := runGit(t, repo, nil, "show", "--pretty=format:", "--name-only", "HEAD")
 	if changed != "a.txt" {
 		t.Fatalf("expected only a.txt in commit, got %q", changed)
+	}
+	subject := runGit(t, repo, nil, "show", "-s", "--format=%s", "HEAD")
+	expectedSubject := gitsemver.MakeCommitMessage(message)
+	if subject != expectedSubject {
+		t.Fatalf("expected commit subject %q, got %q", expectedSubject, subject)
 	}
 	status := runGit(t, repo, nil, "status", "--short")
 	if !strings.Contains(status, "M  b.txt") {
@@ -744,7 +750,7 @@ func Test_DefaultGitter_Commit_NoErrorWhenFileIsUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := dg.Commit(repo, filepath.Join(repo, "a.txt")); err != nil {
+	if err := dg.Commit(repo, filepath.Join(repo, "a.txt"), "release: v1.0.0"); err != nil {
 		t.Fatalf("expected unchanged file commit to be a no-op, got %v", err)
 	}
 	after, err := dg.GetHead(repo, false)
@@ -774,7 +780,7 @@ func Test_DefaultGitter_Commit_AddsUntrackedSpecifiedFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := dg.Commit(repo, filepath.Join(repo, "version.gen.go")); err != nil {
+	if err := dg.Commit(repo, filepath.Join(repo, "version.gen.go"), "release: v1.0.1"); err != nil {
 		t.Fatal(err)
 	}
 
