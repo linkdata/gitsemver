@@ -14,8 +14,6 @@ import (
 	"github.com/linkdata/gitsemver/internal/gitsemver"
 )
 
-//go:generate go run . -gopackage -package main -out version.gen.go
-
 var writeFileFn = os.WriteFile
 var removeFileFn = os.Remove
 
@@ -113,7 +111,7 @@ func mainfn() int {
 	}
 
 	if *flagVersion {
-		fmt.Println(PkgName, PkgVersion)
+		fmt.Println(gitsemver.PkgName, gitsemver.PkgVersion)
 		return 0
 	}
 

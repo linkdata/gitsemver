@@ -14,6 +14,8 @@ import (
 	"strings"
 )
 
+//go:generate go run github.com/linkdata/gitsemver@latest -gopackage -out internal/gitsemver/version.gen.go
+
 // Gitter is an interface exposing the required Git functionality
 type Gitter interface {
 	Exec(args ...string) (output []byte, err error)
