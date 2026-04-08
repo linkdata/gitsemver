@@ -185,7 +185,7 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	env["GITHUB_REF_NAME"] = "github.branch"
 	name, err = vs.GetBranch(".")
 	isEqual(t, err, nil)
-	isEqual(t, "github.branch", name)
+	isEqual(t, "", name)
 	delete(env, "GITHUB_REF_NAME")
 	git.branch = ""
 
@@ -195,7 +195,7 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	env["GITHUB_REF_NAME"] = "123/merge"
 	name, err = vs.GetBranch(".")
 	isEqual(t, err, nil)
-	isEqual(t, "feature/foo", name)
+	isEqual(t, "main", name)
 	eventPath := filepath.Join(t.TempDir(), "event.json")
 	if err = os.WriteFile(eventPath, []byte(`{"pull_request":{"merged":true}}`), 0o600); err != nil {
 		t.Fatal(err)
@@ -235,6 +235,16 @@ func Test_VersionStringer_GetBranch(t *testing.T) {
 	name, err = vs.GetBranch(".")
 	isEqual(t, err, nil)
 	isEqual(t, "gitlab---branch", name)
+	delete(env, "CI_COMMIT_REF_NAME")
+	git.branch = ""
+
+	git.branch = "detached"
+	env["CI_MERGE_REQUEST_TARGET_BRANCH_NAME"] = "main"
+	env["CI_COMMIT_REF_NAME"] = "feature/source"
+	name, err = vs.GetBranch(".")
+	isEqual(t, err, nil)
+	isEqual(t, "main", name)
+	delete(env, "CI_MERGE_REQUEST_TARGET_BRANCH_NAME")
 	delete(env, "CI_COMMIT_REF_NAME")
 	git.branch = ""
 
