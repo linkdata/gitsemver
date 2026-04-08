@@ -192,7 +192,6 @@ func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error)
 				}
 			}
 		}
-		branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_HEAD_REF"))
 	}
 	return
 }
