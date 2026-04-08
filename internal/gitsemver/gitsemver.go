@@ -171,12 +171,6 @@ func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) {
 	return
 }
 
-type gitHubPullRequestEvent struct {
-	PullRequest struct {
-		Merged bool `json:"merged"`
-	} `json:"pull_request"`
-}
-
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) {
 	if branchName = vs.Env.Getenv("GITHUB_BASE_REF"); branchName == "" {
 		if refName := vs.Env.Getenv("GITHUB_REF_NAME"); refName != "" {
