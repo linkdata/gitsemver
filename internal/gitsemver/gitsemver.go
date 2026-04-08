@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 )
 
 // GitSemVer holds git metadata used while computing a version.
@@ -58,7 +57,7 @@ func (vs *GitSemVer) IsReleaseBranch(branchName string) bool {
 
 	// GitLab gives us the default branch name directly.
 	if defBranch, ok := vs.Env.LookupEnv("CI_DEFAULT_BRANCH"); ok {
-		return branchName == strings.TrimSpace(defBranch)
+		return branchName == defBranch
 	}
 
 	// Fallback to common default branch names.
@@ -145,7 +144,7 @@ func (vs *GitSemVer) examineTags(repo string) (err error) {
 // the closest semver tag if none match exactly. It also returns a bool
 // that is true if the tree hashes match and there are no uncommitted changes.
 func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) {
-	if ciTag := strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")); ciTag != "" {
+	if ciTag := vs.Env.Getenv("CI_COMMIT_TAG"); ciTag != "" {
 		if isSemverTag(ciTag) {
 			return ciTag, true, nil
 		}
@@ -179,9 +178,9 @@ type gitHubPullRequestEvent struct {
 }
 
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) {
-	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName == "" {
-		if refName := strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); refName != "" {
-			if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" {
+	if branchName = vs.Env.Getenv("GITHUB_BASE_REF"); branchName == "" {
+		if refName := vs.Env.Getenv("GITHUB_REF_NAME"); refName != "" {
+			if vs.Env.Getenv("GITHUB_REF_TYPE") == "tag" {
 				var branches []string
 				if branches, err = vs.Git.GetBranchesFromTag(repo, refName); err == nil {
 					for _, branchName = range branches {
@@ -198,10 +197,10 @@ func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error)
 }
 
 func (vs *GitSemVer) getBranchGitLab(repo string) (branchName string, err error) {
-	if branchName = strings.TrimSpace(vs.Env.Getenv("CI_MERGE_REQUEST_TARGET_BRANCH_NAME")); branchName == "" {
-		if branchName = strings.TrimSpace(vs.Env.Getenv("CI_EXTERNAL_PULL_REQUEST_TARGET_BRANCH_NAME")); branchName == "" {
-			if branchName = strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_REF_NAME")); branchName != "" {
-				if strings.TrimSpace(vs.Env.Getenv("CI_COMMIT_TAG")) == branchName {
+	if branchName = vs.Env.Getenv("CI_MERGE_REQUEST_TARGET_BRANCH_NAME"); branchName == "" {
+		if branchName = vs.Env.Getenv("CI_EXTERNAL_PULL_REQUEST_TARGET_BRANCH_NAME"); branchName == "" {
+			if branchName = vs.Env.Getenv("CI_COMMIT_REF_NAME"); branchName != "" {
+				if vs.Env.Getenv("CI_COMMIT_TAG") == branchName {
 					var branches []string
 					if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil {
 						for _, branchName = range branches {
@@ -236,8 +235,8 @@ func (vs *GitSemVer) GetBranch(repo string) (branchName string, err error) {
 // otherwise the Git commit count is used. Returns an empty string if no reasonable build
 // counter can be found.
 func (vs *GitSemVer) GetBuild(repo string) (build string, err error) {
-	if build = strings.TrimSpace(vs.Env.Getenv("CI_PIPELINE_IID")); build == "" {
-		if build = strings.TrimSpace(vs.Env.Getenv("GITHUB_RUN_NUMBER")); build == "" {
+	if build = vs.Env.Getenv("CI_PIPELINE_IID"); build == "" {
+		if build = vs.Env.Getenv("GITHUB_RUN_NUMBER"); build == "" {
 			build, err = vs.Git.GetBuild(repo)
 		}
 	}

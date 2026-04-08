@@ -10,11 +10,12 @@ import (
 type MockEnvironment map[string]string
 
 func (me MockEnvironment) Getenv(key string) string {
-	return me[key]
+	return strings.TrimSpace(me[key])
 }
 
 func (me MockEnvironment) LookupEnv(key string) (val string, ok bool) {
 	val, ok = me[key]
+	val = strings.TrimSpace(val)
 	return
 }
 

@@ -1,8 +1,12 @@
 package gitsemver
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
-// Environment allows us to mock the OS environment
+// Environment allows us to mock the OS environment.
+// Returns values with leading and trailing space trimmed.
 type Environment interface {
 	Getenv(string) string
 	LookupEnv(string) (string, bool)
@@ -12,9 +16,11 @@ type Environment interface {
 type OsEnvironment struct{}
 
 func (OsEnvironment) Getenv(key string) string {
-	return os.Getenv(key)
+	return strings.TrimSpace(os.Getenv(key))
 }
 
-func (OsEnvironment) LookupEnv(key string) (string, bool) {
-	return os.LookupEnv(key)
+func (OsEnvironment) LookupEnv(key string) (v string, ok bool) {
+	v, ok = os.LookupEnv(key)
+	v = strings.TrimSpace(v)
+	return
 }
