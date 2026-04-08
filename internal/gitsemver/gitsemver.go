@@ -1,11 +1,9 @@
 package gitsemver
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -180,46 +178,21 @@ type gitHubPullRequestEvent struct {
 	} `json:"pull_request"`
 }
 
-func (vs *GitSemVer) isMergedGitHubPullRequest() bool {
-	eventName := strings.TrimSpace(vs.Env.Getenv("GITHUB_EVENT_NAME"))
-	if eventName == "pull_request" || eventName == "pull_request_target" {
-		if eventPath := strings.TrimSpace(vs.Env.Getenv("GITHUB_EVENT_PATH")); eventPath != "" {
-			if b, err := os.ReadFile(eventPath); /* #nosec G304 */ err == nil {
-				var event gitHubPullRequestEvent
-				if err = json.Unmarshal(b, &event); err == nil {
-					return event.PullRequest.Merged
-				}
-			}
-		}
-	}
-	return false
-}
-
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) {
-	// Pull request events expose the source branch as GITHUB_HEAD_REF.
-	// Prefer this so PR builds are not mistaken for base-branch releases.
-	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_HEAD_REF")); branchName != "" {
-		// Merged pull_request events should resolve to the target branch.
-		if vs.isMergedGitHubPullRequest() {
-			branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF"))
-		}
-		return
-	}
-	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); branchName != "" {
-		if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" {
-			var branches []string
-			if branches, err = vs.Git.GetBranchesFromTag(repo, branchName); err == nil {
-				for _, branchName = range branches {
-					if vs.IsReleaseBranch(branchName) {
-						return
+	if branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF")); branchName == "" {
+		if refName := strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_NAME")); refName != "" {
+			if strings.TrimSpace(vs.Env.Getenv("GITHUB_REF_TYPE")) == "tag" {
+				var branches []string
+				if branches, err = vs.Git.GetBranchesFromTag(repo, refName); err == nil {
+					for _, branchName = range branches {
+						if vs.IsReleaseBranch(branchName) {
+							return
+						}
 					}
 				}
 			}
-			branchName = ""
 		}
-	} else {
-		// Fallback for contexts that only expose a base branch.
-		branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_BASE_REF"))
+		branchName = strings.TrimSpace(vs.Env.Getenv("GITHUB_HEAD_REF"))
 	}
 	return
 }
