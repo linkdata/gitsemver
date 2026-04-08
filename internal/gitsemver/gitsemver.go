@@ -190,6 +190,7 @@ func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error)
 						}
 					}
 				}
+				branchName = ""
 			}
 		}
 	}
