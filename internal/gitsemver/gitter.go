@@ -25,7 +25,7 @@ type Gitter interface {
 	GetTags(repo string) (tags []string, err error)
 	// GetCurrentTreeHash returns the current tree hash.
 	GetCurrentTreeHash(repo string) (string, error)
-	// GetHashes returns the commit and tree hashes for the given tag.
+	// GetHashes returns the target commit and tree hashes for the given tag.
 	GetHashes(repo, tag string) (commit string, tree string, err error)
 	// GetHashesBatch returns commit/tree hashes for many tags.
 	GetHashesBatch(repo string, tags []string) (hashes []GitTag, err error)
@@ -43,7 +43,9 @@ type Gitter interface {
 	ResetHard(repo, commit string) (err error)
 	// FetchTags calls "git fetch --tags". Uses the "--unshallow" option if needed.
 	FetchTags(repo string) error
-	// CreateTag creates a new lightweight tag. Does nothing if tag is empty.
+	// CreateTag creates a new tag. If tag.gpgSign is true, it creates
+	// a signed annotated tag with a generated message; otherwise it creates
+	// a lightweight tag. Does nothing if tag is empty.
 	CreateTag(repo, tag string) error
 	// DeleteTag deletes the given tag. Does nothing if tag is empty.
 	DeleteTag(repo, tag string) (err error)
@@ -195,10 +197,10 @@ func (dg DefaultGitter) GetCurrentTreeHash(repo string) (hash string, err error)
 	return
 }
 
-// GetHashes returns the commit and tree hashes for the given tag.
+// GetHashes returns the target commit and tree hashes for the given tag.
 func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string, err error) {
 	var b []byte
-	if b, err = dg.Exec("-C", repo, "rev-parse", tag, tag+"^{tree}"); err == nil && len(b) > 0 /* #nosec G204 */ {
+	if b, err = dg.Exec("-C", repo, "rev-parse", tag+"^{commit}", tag+"^{tree}"); err == nil && len(b) > 0 /* #nosec G204 */ {
 		hashes := strings.Split(strings.TrimSpace(string(b)), "\n")
 		if len(hashes) == 2 {
 			commit, tree = hashes[0], hashes[1]
@@ -217,7 +219,7 @@ func (dg DefaultGitter) GetHashesBatch(repo string, tags []string) (hashes []Git
 		args := make([]string, 0, 3+len(chunk)*2)
 		args = append(args, "-C", repo, "rev-parse")
 		for _, tag := range chunk {
-			args = append(args, tag, tag+"^{tree}")
+			args = append(args, tag+"^{commit}", tag+"^{tree}")
 		}
 		var b []byte
 		if b, err = dg.Exec(args...); err == nil {
@@ -374,9 +376,34 @@ func (dg DefaultGitter) FetchTags(repo string) (err error) {
 	return
 }
 
+func isGitExitCode(err error, code int) (yes bool) {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		yes = exitErr.ExitCode() == code
+	}
+	return
+}
+
+func (dg DefaultGitter) getConfigBool(repo, name string) (yes bool, err error) {
+	var b []byte
+	if b, err = dg.Exec("-C", repo, "config", "--type=bool", "--get", name); err == nil {
+		yes = strings.EqualFold(strings.TrimSpace(string(b)), "true")
+	} else if isGitExitCode(err, 1) {
+		err = nil
+	}
+	return
+}
+
 func (dg DefaultGitter) CreateTag(repo, tag string) (err error) {
 	if tag != "" {
-		_, err = dg.Exec("-C", repo, "tag", tag)
+		var sign bool
+		if sign, err = dg.getConfigBool(repo, "tag.gpgSign"); err == nil {
+			args := []string{"-C", repo, "tag", tag}
+			if sign {
+				args = []string{"-C", repo, "tag", "-m", MakeCommitMessage(tag), tag}
+			}
+			_, err = dg.Exec(args...)
+		}
 	}
 	return
 }

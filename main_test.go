@@ -19,9 +19,19 @@ func init() {
 	testMode = true
 }
 
+func TestMain(m *testing.M) {
+	_ = os.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	_ = os.Setenv("GIT_CONFIG_NOSYSTEM", "true")
+	os.Exit(m.Run())
+}
+
 func runGit(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", args...)
+	cmd.Env = append(os.Environ(),
+		"GIT_CONFIG_GLOBAL="+os.DevNull,
+		"GIT_CONFIG_NOSYSTEM=true",
+	)
 	if dir != "" {
 		cmd.Dir = dir
 	}

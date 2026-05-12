@@ -17,8 +17,11 @@ import (
 func runGit(t *testing.T, repo string, env map[string]string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
+	cmd.Env = append(os.Environ(),
+		"GIT_CONFIG_GLOBAL="+os.DevNull,
+		"GIT_CONFIG_NOSYSTEM=true",
+	)
 	if len(env) > 0 {
-		cmd.Env = os.Environ()
 		for k, v := range env {
 			cmd.Env = append(cmd.Env, k+"="+v)
 		}
@@ -28,6 +31,12 @@ func runGit(t *testing.T, repo string, env map[string]string, args ...string) st
 		t.Fatalf("git %q failed: %v: %s", strings.Join(args, " "), err, strings.TrimSpace(string(b)))
 	}
 	return strings.TrimSpace(string(b))
+}
+
+func TestMain(m *testing.M) {
+	_ = os.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	_ = os.Setenv("GIT_CONFIG_NOSYSTEM", "true")
+	os.Exit(m.Run())
 }
 
 func commitAt(t *testing.T, repo, fileName, content, message, timestamp string) {
@@ -40,6 +49,22 @@ func commitAt(t *testing.T, repo, fileName, content, message, timestamp string) 
 		"GIT_AUTHOR_DATE":    timestamp,
 		"GIT_COMMITTER_DATE": timestamp,
 	}, "commit", "-q", "-m", message)
+}
+
+func configureSSHSigning(t *testing.T, repo string) {
+	t.Helper()
+	if _, err := exec.LookPath("ssh-keygen"); err != nil {
+		t.Skip("ssh-keygen not available")
+	}
+	keyFile := filepath.Join(t.TempDir(), "signing_key")
+	cmd := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", keyFile)
+	if b, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("ssh-keygen failed: %v: %s", err, strings.TrimSpace(string(b)))
+	}
+	runGit(t, repo, nil, "config", "gpg.format", "ssh")
+	runGit(t, repo, nil, "config", "user.signingkey", keyFile)
+	runGit(t, repo, nil, "config", "tag.gpgSign", "true")
+	runGit(t, repo, nil, "config", "core.editor", "editor")
 }
 
 func Test_NewDefaultGitter_SucceedsNormally(t *testing.T) {
@@ -629,17 +654,69 @@ func Test_DefaultGitter_FetchTags(t *testing.T) {
 }
 
 func Test_DefaultGitter_CreateDeleteTag(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+
 	dg, err := gitsemver.NewDefaultGitter("git", nil)
 	if err != nil {
 		t.Error(err)
 	}
-	err = dg.CreateTag(".", "test-tag")
+	err = dg.CreateTag(repo, "test-tag")
 	if err != nil {
 		t.Error(err)
 	}
-	err = dg.DeleteTag(".", "test-tag")
+	if objectType := runGit(t, repo, nil, "cat-file", "-t", "test-tag"); objectType != "commit" {
+		t.Fatalf("expected lightweight tag object type commit, got %q", objectType)
+	}
+	err = dg.DeleteTag(repo, "test-tag")
 	if err != nil {
 		t.Error(err)
+	}
+}
+
+func Test_DefaultGitter_CreateTag_AddsMessageWhenSigningRequired(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	configureSSHSigning(t, repo)
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+
+	dg, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dg.CreateTag(repo, "test-tag"); err != nil {
+		t.Fatal(err)
+	}
+	if objectType := runGit(t, repo, nil, "cat-file", "-t", "test-tag"); objectType != "tag" {
+		t.Fatalf("expected signed annotated tag object type tag, got %q", objectType)
+	}
+	tagObject := runGit(t, repo, nil, "cat-file", "-p", "test-tag")
+	if !strings.Contains(tagObject, "\n\ntag test-tag\n") {
+		t.Fatalf("expected generated tag message, got %q", tagObject)
+	}
+	if !strings.Contains(tagObject, "BEGIN SSH SIGNATURE") {
+		t.Fatalf("expected SSH signature, got %q", tagObject)
+	}
+	headCommit := runGit(t, repo, nil, "rev-parse", "HEAD")
+	headTree := runGit(t, repo, nil, "rev-parse", "HEAD^{tree}")
+	commit, tree, err := dg.GetHashes(repo, "test-tag")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if commit != headCommit || tree != headTree {
+		t.Fatalf("expected tag to resolve to %s/%s, got %s/%s", headCommit, headTree, commit, tree)
+	}
+	hashes, err := dg.GetHashesBatch(repo, []string{"test-tag"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(hashes) != 1 || hashes[0].Commit != headCommit || hashes[0].Tree != headTree {
+		t.Fatalf("unexpected batched hashes: %+v", hashes)
 	}
 }
 

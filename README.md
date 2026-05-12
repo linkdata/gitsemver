@@ -71,7 +71,10 @@ $ gitsemver $HOME/myreleasedpackage
 v1.2.3
 ```
 
-#### Increment the patch level and push a new lightweight tag to the origin
+#### Increment the patch level and push a new tag to the origin
+
+If Git has `tag.gpgSign` enabled, the new tag is signed and annotated with a
+generated message. Otherwise, the new tag is lightweight.
 
 ```sh
 $ gitsemver
