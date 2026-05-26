@@ -210,10 +210,11 @@ func (dg DefaultGitter) GetHashes(repo, tag string) (commit, tree string, err er
 }
 
 // GetHashesBatch returns commit/tree hashes for many tags using chunked
-// rev-parse calls to reduce process startup overhead.
+// rev-parse calls to reduce process startup overhead. If any chunk fails,
+// iteration stops and the returned slice is nil.
 func (dg DefaultGitter) GetHashesBatch(repo string, tags []string) (hashes []GitTag, err error) {
 	hashes = make([]GitTag, 0, len(tags))
-	for i := 0; i < len(tags); i += revParseBatchTagCount {
+	for i := 0; err == nil && i < len(tags); i += revParseBatchTagCount {
 		end := min(i+revParseBatchTagCount, len(tags))
 		chunk := tags[i:end]
 		args := make([]string, 0, 3+len(chunk)*2)
@@ -224,9 +225,7 @@ func (dg DefaultGitter) GetHashesBatch(repo string, tags []string) (hashes []Git
 		var b []byte
 		if b, err = dg.Exec(args...); err == nil {
 			lines := strings.Fields(string(b))
-			err = NewErrUnexpectedRevParseOutput(len(chunk), len(lines))
 			if len(lines) == len(chunk)*2 {
-				err = nil
 				for idx, tag := range chunk {
 					commit, tree := lines[idx*2], lines[idx*2+1]
 					if commit != "" && tree != "" {
@@ -237,8 +236,13 @@ func (dg DefaultGitter) GetHashesBatch(repo string, tags []string) (hashes []Git
 						})
 					}
 				}
+			} else {
+				err = NewErrUnexpectedRevParseOutput(len(chunk), len(lines))
 			}
 		}
+	}
+	if err != nil {
+		hashes = nil
 	}
 	return
 }

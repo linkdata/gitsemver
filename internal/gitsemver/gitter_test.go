@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -381,6 +382,81 @@ func Test_DefaultGitter_GetHashesBatch_ChunksAndPreservesOrder(t *testing.T) {
 		if batched[i].Commit != wantCommit || batched[i].Tree != wantTree {
 			t.Fatalf("unexpected hashes for %q: %+v", tags[i], batched[i])
 		}
+	}
+}
+
+// A successful rev-parse that produces fewer lines than tags*2 must
+// surface as ErrUnexpectedRevParseOutput. Real git never does this, so
+// the test stubs in a tiny fake git binary.
+func Test_DefaultGitter_GetHashesBatch_UnexpectedOutputCount(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-based fake git not portable to windows")
+	}
+	dir := t.TempDir()
+	fakeGit := filepath.Join(dir, "git")
+	script := "#!/bin/sh\nprintf 'onlyoneline\\n'\nexit 0\n"
+	if err := os.WriteFile(fakeGit, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	g, err := gitsemver.NewDefaultGitter(fakeGit, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dg, ok := g.(gitsemver.DefaultGitter)
+	if !ok {
+		t.Fatalf("expected DefaultGitter, got %T", g)
+	}
+	hashes, err := dg.GetHashesBatch(dir, []string{"v1.0.0", "v2.0.0"})
+	if !errors.Is(err, gitsemver.ErrUnexpectedRevParseOutput) {
+		t.Fatalf("expected ErrUnexpectedRevParseOutput, got %v", err)
+	}
+	if hashes != nil {
+		t.Fatalf("expected nil hashes on error, got %d", len(hashes))
+	}
+}
+
+// If an earlier chunk fails, the error must not be silently overwritten
+// by a later chunk that succeeds.
+func Test_DefaultGitter_GetHashesBatch_ReportsEarlierChunkError(t *testing.T) {
+	repo := t.TempDir()
+	runGit(t, repo, nil, "init", "-q")
+	runGit(t, repo, nil, "config", "user.email", "test@example.com")
+	runGit(t, repo, nil, "config", "user.name", "Test")
+	commitAt(t, repo, "a.txt", "a\n", "c1", "2020-01-01T00:00:00Z")
+
+	// 127 valid tags + 1 invalid fills the first 128-tag chunk so it
+	// fails. The next chunk has 2 valid tags and would otherwise hide
+	// the earlier failure under err=nil.
+	tags := make([]string, 0, 130)
+	for i := range 127 {
+		tag := "valid-" + strconv.Itoa(i)
+		runGit(t, repo, nil, "tag", tag)
+		tags = append(tags, tag)
+	}
+	tags = append(tags, "doesnotexist")
+	for i := 127; i < 129; i++ {
+		tag := "valid-" + strconv.Itoa(i)
+		runGit(t, repo, nil, "tag", tag)
+		tags = append(tags, tag)
+	}
+
+	g, err := gitsemver.NewDefaultGitter("git", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dg, ok := g.(gitsemver.DefaultGitter)
+	if !ok {
+		t.Fatalf("expected DefaultGitter, got %T", g)
+	}
+	batched, err := dg.GetHashesBatch(repo, tags)
+	if err == nil {
+		t.Fatalf("expected error from failing chunk, got nil with %d hashes", len(batched))
+	}
+	if batched != nil {
+		t.Fatalf("expected nil hashes on error, got %d", len(batched))
+	}
+	if !errors.Is(err, gitsemver.ErrGitExec) {
+		t.Fatalf("expected wrapped ErrGitExec, got %T: %v", err, err)
 	}
 }
 
