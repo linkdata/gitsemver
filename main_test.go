@@ -307,8 +307,13 @@ func TestMainFn(t *testing.T) {
 	*flagBranch = false
 	testMode = true
 
+	preHead := runGitHead(t, work)
 	if code := mainfn(); code != 0 {
 		t.Fatalf("mainfn failed with code %d", code)
+	}
+	afterHead := runGitHead(t, work)
+	if afterHead != preHead {
+		t.Fatalf("expected HEAD to remain %q without increment flags, got %q", preHead, afterHead)
 	}
 	b, err := os.ReadFile(filepath.Join(work, "test.out"))
 	if err == nil {
@@ -318,6 +323,9 @@ func TestMainFn(t *testing.T) {
 		}
 	} else {
 		t.Error(err)
+	}
+	if status := runGit(t, work, "status", "--porcelain", "--", "test.out"); !strings.Contains(status, "?? test.out") {
+		t.Fatalf("expected generated output to remain uncommitted, got status %q", status)
 	}
 }
 
