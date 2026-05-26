@@ -86,15 +86,17 @@ func (vi *VersionInfo) GoPackage(repo, pkgName, packageName, createTag string) (
 }
 
 func (vi *VersionInfo) HasTag(tag string) bool {
-	tagCore := strings.TrimPrefix(tag, "v")
-	tagIsSemver := isSemverTag(tag)
+	tagCanonical, tagIsSemver := canonicalSemverTag(tag)
 	for _, gt := range vi.Tags {
 		if gt.Tag == tag {
 			return true
 		}
-		// Treat v-prefixed and non-prefixed semver tags as equivalent.
-		if tagIsSemver && isSemverTag(gt.Tag) && strings.TrimPrefix(gt.Tag, "v") == tagCore {
-			return true
+		// Treat semver tags as equivalent when their canonical forms match,
+		// so v1.3, v1.3.0, and 1.3.0 all collide.
+		if tagIsSemver {
+			if gtCanonical, ok := canonicalSemverTag(gt.Tag); ok && gtCanonical == tagCanonical {
+				return true
+			}
 		}
 	}
 	return false

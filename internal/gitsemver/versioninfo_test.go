@@ -180,6 +180,57 @@ func Test_VersionInfo_IncMinor_AvoidsEquivalentPrefixCollisions(t *testing.T) {
 	}
 }
 
+// Two-part source v1.2 must skip "v1.3" when "v1.3.0" already exists,
+// because v1.3 and v1.3.0 are canonically the same version.
+func Test_VersionInfo_IncMinor_AvoidsShortFormCollision(t *testing.T) {
+	vi := &gitsemver.VersionInfo{
+		Tag: "v1.2",
+		Tags: []gitsemver.GitTag{
+			{Tag: "v1.2"},
+			{Tag: "v1.3.0"},
+		},
+	}
+	if got := vi.IncMinor(); got != "v1.4" {
+		t.Fatalf("expected v1.4, got %q", got)
+	}
+}
+
+// Three-part source v1.2.3 must skip "v1.3.0" when "v1.3" already exists.
+func Test_VersionInfo_IncMinor_AvoidsLongFormCollision(t *testing.T) {
+	vi := &gitsemver.VersionInfo{
+		Tag: "v1.2.3",
+		Tags: []gitsemver.GitTag{
+			{Tag: "v1.2.3"},
+			{Tag: "v1.3"},
+		},
+	}
+	if got := vi.IncMinor(); got != "v1.4.0" {
+		t.Fatalf("expected v1.4.0, got %q", got)
+	}
+}
+
+func Test_VersionInfo_HasTag_CanonicalEquivalence(t *testing.T) {
+	cases := []struct {
+		name string
+		have string
+		ask  string
+	}{
+		{"short-vs-full-v", "v1.3.0", "v1.3"},
+		{"full-vs-short-v", "v1.3", "v1.3.0"},
+		{"major-only-vs-full", "v1.0.0", "v1"},
+		{"noprefix-vs-vprefix", "1.3.0", "v1.3"},
+		{"vprefix-vs-noprefix-short", "v1.3", "1.3.0"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			vi := &gitsemver.VersionInfo{Tags: []gitsemver.GitTag{{Tag: tc.have}}}
+			if !vi.HasTag(tc.ask) {
+				t.Fatalf("HasTag(%q) with %q in Tags returned false; canonically equal versions should collide", tc.ask, tc.have)
+			}
+		})
+	}
+}
+
 func Test_VersionInfo_IncMinor_InvalidTagNoLoop(t *testing.T) {
 	vi := &gitsemver.VersionInfo{Tag: "not-a-semver-tag"}
 	if got := vi.IncMinor(); got != "not-a-semver-tag" {
