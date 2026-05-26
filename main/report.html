@@ -366,7 +366,10 @@ func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) <sp
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) <span class="cov8" title="1">{
         if branchName = vs.Env.Getenv("GITHUB_BASE_REF"); branchName == "" </span><span class="cov8" title="1">{
                 if refName := vs.Env.Getenv("GITHUB_REF_NAME"); refName != "" </span><span class="cov8" title="1">{
-                        if vs.Env.Getenv("GITHUB_REF_TYPE") == "tag" </span><span class="cov8" title="1">{
+                        switch vs.Env.Getenv("GITHUB_REF_TYPE") </span>{
+                        case "branch":<span class="cov8" title="1">
+                                branchName = refName</span>
+                        case "tag":<span class="cov8" title="1">
                                 var branches []string
                                 if branches, err = vs.Git.GetBranchesFromTag(repo, refName); err == nil </span><span class="cov8" title="1">{
                                         for _, branchName = range branches </span><span class="cov8" title="1">{
@@ -1341,7 +1344,11 @@ func mainfn() int <span class="cov8" title="1">{
                                                         var preRunHead, afterHead string
                                                         if preRunHead, err = vs.Git.GetHead(repoDir, createTag == ""); err == nil </span><span class="cov8" title="1">{
                                                                 if err = publish(); err == nil </span><span class="cov8" title="1">{
-                                                                        if err = vs.Git.Commit(repoDir, outpath, createTag); err == nil </span><span class="cov8" title="1">{
+                                                                        commitPath := ""
+                                                                        if createTag != "" </span><span class="cov8" title="1">{
+                                                                                commitPath = outpath
+                                                                        }</span>
+                                                                        <span class="cov8" title="1">if err = vs.Git.Commit(repoDir, commitPath, createTag); err == nil </span><span class="cov8" title="1">{
                                                                                 if afterHead, err = vs.Git.GetHead(repoDir, createTag == ""); err == nil </span><span class="cov8" title="1">{
                                                                                         if err = vs.Git.CreateTag(repoDir, createTag); err == nil </span><span class="cov8" title="1">{
                                                                                                 if err = vs.Git.PushTag(repoDir, createTag); err == nil </span><span class="cov8" title="1">{
