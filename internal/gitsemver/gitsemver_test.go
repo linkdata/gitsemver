@@ -289,6 +289,34 @@ func Test_VersionStringer_GetBranchFromTag_GitHub(t *testing.T) {
 	isEqual(t, "", name)
 }
 
+func Test_VersionStringer_GetBranchFromBranchRef_GitHub(t *testing.T) {
+	env := MockEnvironment{}
+	git := &MockGitter{branch: "detached"}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
+
+	env["GITHUB_REF_TYPE"] = "branch"
+	env["GITHUB_REF_NAME"] = "feature/foo"
+	name, err := vs.GetBranch(".")
+	isEqual(t, err, nil)
+	isEqual(t, "feature/foo", name)
+}
+
+func Test_VersionStringer_GetVersionFromBranchRef_GitHub(t *testing.T) {
+	env := MockEnvironment{
+		"GITHUB_REF_TYPE":   "branch",
+		"GITHUB_REF_NAME":   "feature/foo",
+		"GITHUB_RUN_NUMBER": "789",
+	}
+	git := &MockGitter{branch: "detached", treehash: "tree-6"}
+	vs := gitsemver.GitSemVer{Git: git, Env: env}
+
+	vi, err := vs.GetVersion(".")
+	if err != nil {
+		t.Error(err)
+	}
+	isEqual(t, "v6.0.0-feature-foo.789", vi.Version())
+}
+
 func Test_VersionStringer_GetBranchFromTag_GitHub_NoContainingBranch(t *testing.T) {
 	env := MockEnvironment{}
 	git := &MockGitter{}

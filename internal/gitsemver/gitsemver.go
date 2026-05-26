@@ -174,7 +174,10 @@ func (vs *GitSemVer) GetTag(repo string) (tag string, match bool, err error) {
 func (vs *GitSemVer) getBranchGitHub(repo string) (branchName string, err error) {
 	if branchName = vs.Env.Getenv("GITHUB_BASE_REF"); branchName == "" {
 		if refName := vs.Env.Getenv("GITHUB_REF_NAME"); refName != "" {
-			if vs.Env.Getenv("GITHUB_REF_TYPE") == "tag" {
+			switch vs.Env.Getenv("GITHUB_REF_TYPE") {
+			case "branch":
+				branchName = refName
+			case "tag":
 				var branches []string
 				if branches, err = vs.Git.GetBranchesFromTag(repo, refName); err == nil {
 					for _, branchName = range branches {
