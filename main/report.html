@@ -1190,6 +1190,7 @@ import (
         "math/rand/v2"
         "os"
         "path/filepath"
+        "strings"
         "syscall"
 
         "github.com/linkdata/gitsemver/internal/gitsemver"
@@ -1340,7 +1341,7 @@ func mainfn() int <span class="cov8" title="1">{
                                                 if outpath != "" &amp;&amp; !filepath.IsAbs(outpath) </span><span class="cov8" title="1">{
                                                         outpath = filepath.Join(repoDir, outpath)
                                                 }</span>
-                                                <span class="cov8" title="1">if !*flagNoNewline </span><span class="cov8" title="1">{
+                                                <span class="cov8" title="1">if !*flagNoNewline &amp;&amp; !strings.HasSuffix(content, "\n") </span><span class="cov8" title="1">{
                                                         content += "\n"
                                                 }</span>
                                                 <span class="cov8" title="1">var publish func() error
