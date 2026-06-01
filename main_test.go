@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"flag"
+	"go/format"
 	"io"
 	"os"
 	"os/exec"
@@ -320,6 +321,13 @@ func TestMainFn(t *testing.T) {
 		s := string(b)
 		if !strings.Contains(s, "package gitsemvertest") || !strings.Contains(s, "PkgName = \"gitsemvertest\"") {
 			t.Error(s)
+		}
+		var formatted []byte
+		if formatted, err = format.Source(b); err != nil {
+			t.Fatal(err)
+		}
+		if string(formatted) != s {
+			t.Fatalf("generated package output is not gofmt-formatted:\n%s", s)
 		}
 	} else {
 		t.Error(err)

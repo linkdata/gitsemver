@@ -9,6 +9,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/linkdata/gitsemver/internal/gitsemver"
@@ -159,7 +160,7 @@ func mainfn() int {
 						if outpath != "" && !filepath.IsAbs(outpath) {
 							outpath = filepath.Join(repoDir, outpath)
 						}
-						if !*flagNoNewline {
+						if !*flagNoNewline && !strings.HasSuffix(content, "\n") {
 							content += "\n"
 						}
 						var publish func() error
